@@ -86,6 +86,12 @@ const ClientDashboard = () => {
               <h1 className="text-3xl font-bold text-brand-blue">My Dashboard</h1>
               <p className="text-gray-600">Welcome back! Manage your properties and payments</p>
             </div>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="ml-4 px-4 py-2 bg-brand-gold text-brand-blue font-semibold rounded hover:bg-brand-gold/90 border border-brand-gold transition-colors"
+            >
+              Return Home
+            </button>
           </div>
         </div>
       </div>

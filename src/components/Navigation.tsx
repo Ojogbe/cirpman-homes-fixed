@@ -123,8 +123,8 @@ const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3">
             <img 
-              src="/lovable-uploads/Cirpman homes ltd.png" 
-              alt="Cirpman Homes Ltd" 
+              src="/lovable-uploads/Cripman homes ltd. Logo.png" 
+              alt="Cirpman Homes Ltd Logo" 
               className="h-12 w-auto"
             />
             <div className="hidden sm:block">

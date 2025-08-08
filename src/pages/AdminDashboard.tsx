@@ -106,6 +106,12 @@ const AdminDashboard = () => {
               <h1 className="text-3xl font-bold text-brand-blue">Admin Dashboard</h1>
               <p className="text-gray-600">Manage your real estate platform</p>
             </div>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="ml-4 px-4 py-2 bg-brand-gold text-brand-blue font-semibold rounded hover:bg-brand-gold/90 border border-brand-gold transition-colors"
+            >
+              Return Home
+            </button>
           </div>
         </div>
       </div>

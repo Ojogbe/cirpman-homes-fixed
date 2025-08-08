@@ -24,18 +24,10 @@ const Auth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Get user role to redirect appropriately
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        
-        const dashboardPath = profile?.role === 'admin' ? '/dashboard/admin' : '/dashboard/client';
-        navigate(dashboardPath);
+        // Redirect to home page if already logged in
+        navigate('/');
       }
     };
-    
     checkUser();
   }, [navigate]);
 
@@ -106,18 +98,8 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Get user role to redirect appropriately
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
-        
-        const dashboardPath = profile?.role === 'admin' ? '/dashboard/admin' : '/dashboard/client';
         toast.success('Signed in successfully!');
-        
-        // Force page reload for clean state
-        window.location.href = dashboardPath;
+        window.location.href = '/';
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred during signin');
@@ -131,8 +113,8 @@ const Auth = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <img 
-            src="/lovable-uploads/Cirpman homes ltd.png" 
-            alt="Cirpman Homes Ltd" 
+            src="/lovable-uploads/Cripman homes ltd. Logo.png" 
+            alt="Cirpman Homes Ltd Logo" 
             className="h-16 w-auto"
           />
         </div>
@@ -232,6 +214,11 @@ const Auth = () => {
             </form>
           </CardContent>
         </Card>
+      </div>
+      <div className="mt-4 flex justify-center">
+        <Button onClick={() => navigate('/')} variant="outline" className="text-brand-blue border-brand-blue">
+          Return Home
+        </Button>
       </div>
     </div>
   );
