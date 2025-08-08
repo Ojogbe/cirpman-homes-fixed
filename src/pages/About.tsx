@@ -14,47 +14,47 @@ const teamMembers: TeamMember[] = [
   {
     name: 'Joseph M Oluwaseun',
     role: 'Managing Director',
-    image_url: '/lovable-uploads/the team/Joseph M Oluwaseun - Managing Director.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Joseph M Oluwaseun - Managing Director.jpg',
   },
   {
     name: 'Queen O Oluwaseun',
     role: 'Deputy Managing Director',
-    image_url: '/lovable-uploads/the team/Queen O Oluwaseun - Deputy Managing Director.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Queen O Oluwaseun - Deputy Managing Director.jpg',
   },
   {
     name: 'Obute Gabriel Ike',
     role: 'General Manager',
-    image_url: '/lovable-uploads/the team/Obute Gabriel Ike - General Manager.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Obute Gabriel Ike - General Manager.jpg',
   },
   {
     name: 'Chinecherem Chimaoluya Obinwanne',
     role: 'Admin Manager HR',
-    image_url: '/lovable-uploads/the team/Chinecherem Chimaoluya Obinwanne - Admin Manager HR.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Chinecherem Chimaoluya Obinwanne - Admin Manager HR.jpg',
   },
   {
     name: 'Joy Ene Ochube',
     role: 'Sales Manager',
-    image_url: '/lovable-uploads/the team/Joy Ene Ochube - Sales Manager.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Joy Ene Ochube - Sales Manager.jpg',
   },
   {
     name: 'Alice Yusuf',
     role: 'Assistant Sales Manager',
-    image_url: '/lovable-uploads/the team/Alice Yusuf - Assistant Sales Manager.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Alice Yusuf - Assistant Sales Manager.jpg',
   },
   {
     name: 'Joyce Gmada Ibrahim',
     role: 'Media & Advertising Officer',
-    image_url: '/lovable-uploads/the team/Joyce Gmada Ibrahim - Media & Advertising Officer.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Joyce Gmada Ibrahim - Media & Advertising Officer.jpg',
   },
   {
     name: 'Olabode Sunday Kolade',
     role: 'Technical Personnel',
-    image_url: '/lovable-uploads/the team/Olabode Sunday Kolade - Technical Personnel.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Olabode Sunday Kolade - Technical Personnel.jpg',
   },
   {
     name: 'Maris Okoeror',
     role: 'Front Desk Officer',
-    image_url: '/lovable-uploads/the team/Maris Okoeror - Front Desk Officer.jpg',
+    image_url: '/lovable-uploads/THE TEAM/Maris Okoeror - Front Desk Officer.jpg',
   },
 ];
 
