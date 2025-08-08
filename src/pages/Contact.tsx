@@ -72,7 +72,7 @@ const Contact = () => {
                 <Mail className="h-6 w-6 text-brand-gold mt-1" />
                 <div>
                   <h3 className="font-semibold">Email</h3>
-                  <p className="text-gray-600">info@realestate.com</p>
+                  <p className="text-gray-600">info@cirpmanhomesltd.com</p>
                 </div>
               </div>
               
@@ -81,8 +81,8 @@ const Contact = () => {
                 <div>
                   <h3 className="font-semibold">Address</h3>
                   <p className="text-gray-600">
-                    123 Real Estate Avenue<br />
-                    Lagos, Nigeria
+                    Suite 12, OJEJE Plaza, Secretariat Road<br />
+                    Gwagwalada, Abuja
                   </p>
                 </div>
               </div>
