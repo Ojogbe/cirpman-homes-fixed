@@ -82,7 +82,7 @@ const Contact = () => {
                   <h3 className="font-semibold">Address</h3>
                   <p className="text-gray-600">
                     Suite 12, OJEJE Plaza, Secretariat Road<br />
-                    Gwagwalada, Abuja
+                    Gwagwalada, Abuja.
                   </p>
                 </div>
               </div>
