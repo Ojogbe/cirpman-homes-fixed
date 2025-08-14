@@ -50,14 +50,8 @@ const AdminDashboard = () => {
       const { count: siteVisitsCount } = await supabase
         .from('site_visit_bookings')
         .select('*', { count: 'exact', head: true });
-      // Revenue (sum of all property_bookings.total_price)
-      const { data: revenueData, error: revenueError } = await supabase
-        .from('property_bookings')
-        .select('total_price');
-      let revenue = 0;
-      if (!revenueError && revenueData) {
-        revenue = revenueData.reduce((sum, b) => sum + (parseFloat(b.total_price) || 0), 0);
-      }
+      // Hide revenue in this version
+      const revenue = 0;
       setOverview({
         clients: clientsCount || 0,
         properties: propertiesCount || 0,
@@ -164,7 +158,7 @@ const AdminDashboard = () => {
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">₦{overviewLoading ? '...' : overview.revenue.toLocaleString()}</div>
+                <div className="text-2xl font-bold">---</div>
                 <p className="text-xs text-muted-foreground">Total earnings</p>
               </CardContent>
             </Card>
