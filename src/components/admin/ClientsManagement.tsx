@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, Users, UserCog } from 'lucide-react';
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 
 interface Client {
   id: string;
@@ -24,6 +26,9 @@ const ClientsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [clientPlans, setClientPlans] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -105,6 +110,41 @@ const ClientsManagement = () => {
       toast.success(`User role updated to ${newRole}`);
     } catch (error: any) {
       toast.error('Failed to update user role: ' + error.message);
+    }
+  };
+
+  const fetchClientPlans = async (clientId: string) => {
+    setPlansLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('property_bookings')
+        .select(`*, properties (title), installment_plans (*)`)
+        .eq('user_id', clientId);
+      if (error) throw error;
+      setClientPlans(data || []);
+    } catch (e) {
+      setClientPlans([]);
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+  const handleOpenClientPlans = (client: any) => {
+    setSelectedClient(client);
+    fetchClientPlans(client.id);
+  };
+  const handleUpdateStage = async (planId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('installment_plans')
+      .update({ status: newStatus })
+      .eq('id', planId);
+    if (!error) {
+      setClientPlans(plans => plans.map(plan => ({
+        ...plan,
+        installment_plans: plan.installment_plans.map((ip: any) => ip.id === planId ? { ...ip, status: newStatus } : ip)
+      })));
+      toast.success('Installment stage updated!');
+    } else {
+      toast.error('Failed to update stage');
     }
   };
 
@@ -199,6 +239,9 @@ const ClientsManagement = () => {
                           </SelectContent>
                         </Select>
                         <UserCog className="h-4 w-4 text-gray-400" />
+                        <Button size="sm" variant="outline" onClick={() => handleOpenClientPlans(client)}>
+                          View Installments
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -245,6 +288,51 @@ const ClientsManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Client Installment Modal */}
+      {selectedClient && (
+        <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
+          <DialogContent className="max-w-2xl w-full">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold">Installment Plans for {selectedClient.full_name}</h2>
+            </div>
+            {plansLoading ? (
+              <div>Loading...</div>
+            ) : clientPlans.length === 0 ? (
+              <div>No installment plans found for this client.</div>
+            ) : (
+              <div className="space-y-4">
+                {clientPlans.map((booking) => booking.installment_plans.map((plan: any) => {
+                  const progress = (plan.total_paid / plan.total_amount) * 100;
+                  return (
+                    <div key={plan.id} className="border rounded p-3 bg-gray-50">
+                      <div className="flex justify-between items-center mb-2">
+                        <div>
+                          <div className="font-semibold">{booking.properties?.title || 'Property'}</div>
+                          <div className="text-xs text-gray-500">Booking: {booking.id}</div>
+                        </div>
+                        <Select value={plan.status} onValueChange={val => handleUpdateStage(plan.id, val)}>
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="On Track">On Track</SelectItem>
+                            <SelectItem value="Paid in Full">Paid in Full</SelectItem>
+                            <SelectItem value="Behind">Behind</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="mb-2">Total: ₦{plan.total_amount.toLocaleString()} | Paid: ₦{plan.total_paid.toLocaleString()}</div>
+                      <Progress value={progress} className="h-2" />
+                      <div className="text-xs text-gray-500 mt-1">Status: {plan.status}</div>
+                    </div>
+                  );
+                }))}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

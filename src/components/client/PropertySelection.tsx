@@ -6,6 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Building, MapPin, TrendingUp } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/hooks/useAuth';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { getRecaptchaToken } from '@/lib/recaptcha';
 
 interface Property {
   id: string;
@@ -19,6 +24,15 @@ interface Property {
   status: string;
   progress: string;
   images: string[];
+  videos?: string[]; // Added for videos
+  installment_config?: {
+    duration: number;
+    minDepositPercent: number;
+    interestRate: number;
+    pricePerSqm: number;
+    minSqm: number;
+    maxSqm: number;
+  };
 }
 
 const PropertySelection = () => {
@@ -26,6 +40,17 @@ const PropertySelection = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookingProperty, setBookingProperty] = useState<string | null>(null);
+  const [viewingProperty, setViewingProperty] = useState<Property | null>(null);
+  const [bookingModalProperty, setBookingModalProperty] = useState<Property | null>(null);
+  const [bookingForm, setBookingForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    preferred_date: '',
+    preferred_time: '',
+    message: '',
+  });
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     fetchProperties();
@@ -92,6 +117,40 @@ const PropertySelection = () => {
       toast.error('Failed to book property: ' + error.message);
     } finally {
       setBookingProperty(null);
+    }
+  };
+
+  const handleBookSiteVisit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingModalProperty) return;
+    setBookingLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const recaptchaToken = await getRecaptchaToken('site_visit_submit');
+      const { data, error } = await supabase.functions.invoke('verify_captcha_and_submit', {
+        body: {
+          action: 'site_visit',
+          payload: {
+            user_id: user?.id || null,
+            property_id: bookingModalProperty.id,
+            name: bookingForm.name,
+            email: bookingForm.email,
+            phone: bookingForm.phone,
+            preferred_date: bookingForm.preferred_date,
+            preferred_time: bookingForm.preferred_time,
+            message: bookingForm.message,
+          },
+          recaptchaToken
+        }
+      });
+      if (error) throw error;
+      toast.success('Site visit request submitted successfully!');
+      setBookingModalProperty(null);
+      setBookingForm({ name: '', email: '', phone: '', preferred_date: '', preferred_time: '', message: '' });
+    } catch (error: any) {
+      toast.error('Failed to submit request: ' + error.message);
+    } finally {
+      setBookingLoading(false);
     }
   };
 
@@ -184,6 +243,21 @@ const PropertySelection = () => {
                   )}
                 </div>
               </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setViewingProperty(property)}
+                >
+                  View Details
+                </Button>
+                <Button
+                  className="w-full bg-brand-gold text-brand-blue"
+                  onClick={() => setBookingModalProperty(property)}
+                >
+                  Book Site Visit
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -195,6 +269,146 @@ const PropertySelection = () => {
           <h3 className="text-xl font-medium text-gray-900 mb-2">No Properties Available</h3>
           <p className="text-gray-500">Check back later for new property listings.</p>
         </div>
+      )}
+
+      {/* Property Details Modal */}
+      {viewingProperty && (
+        <Dialog open={!!viewingProperty} onOpenChange={() => setViewingProperty(null)}>
+          <DialogContent className="max-w-2xl w-full">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-brand-blue">{viewingProperty.title}</h2>
+              <div className="text-gray-600 text-sm mb-2">{viewingProperty.location}</div>
+              <Carousel>
+                <CarouselContent>
+                  {viewingProperty.images && viewingProperty.images.length > 0 && viewingProperty.images.map((img, idx) => (
+                    <CarouselItem key={img + idx}>
+                      <img src={img} alt={`Property image ${idx + 1}`} className="w-full h-64 object-cover rounded" />
+                    </CarouselItem>
+                  ))}
+                  {viewingProperty.videos && viewingProperty.videos.length > 0 && viewingProperty.videos.map((vid, idx) => (
+                    <CarouselItem key={vid + idx}>
+                      <video src={vid} controls className="w-full h-64 object-cover rounded" />
+                    </CarouselItem>
+                  ))}
+                  {(!viewingProperty.images?.length && !viewingProperty.videos?.length) && (
+                    <CarouselItem>
+                      <div className="flex items-center justify-center h-64 bg-gray-100 rounded">
+                        <Building className="h-16 w-16 text-gray-400" />
+                      </div>
+                    </CarouselItem>
+                  )}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
+              <div className="mt-4 space-y-2">
+                <div><span className="font-medium">Description:</span> {viewingProperty.description}</div>
+                <div><span className="font-medium">Size:</span> {viewingProperty.size_min} - {viewingProperty.size_max} sqm</div>
+                <div><span className="font-medium">Price:</span> ₦{viewingProperty.price_min.toLocaleString()} - ₦{viewingProperty.price_max.toLocaleString()}</div>
+                <div><span className="font-medium">Progress:</span> {viewingProperty.progress}</div>
+                <div><span className="font-medium">Status:</span> {viewingProperty.status}</div>
+              </div>
+              {/* Installment Breakdown */}
+              {viewingProperty.installment_config && (
+                <div className="mt-6 p-4 bg-blue-50 border rounded">
+                  <div className="font-semibold mb-2 text-brand-blue">Installment Payment Breakdown</div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>Duration: <span className="font-bold">{viewingProperty.installment_config.duration} months</span></div>
+                    <div>Min Deposit: <span className="font-bold">{viewingProperty.installment_config.minDepositPercent}%</span></div>
+                    <div>Interest Rate: <span className="font-bold">{viewingProperty.installment_config.interestRate}%/mo</span></div>
+                    <div>Price per sqm: <span className="font-bold">₦{viewingProperty.installment_config.pricePerSqm.toLocaleString()}</span></div>
+                    <div>Min Sqm: <span className="font-bold">{viewingProperty.installment_config.minSqm}</span></div>
+                    <div>Max Sqm: <span className="font-bold">{viewingProperty.installment_config.maxSqm}</span></div>
+                  </div>
+                  {/* Calculation preview (use min sqm for preview) */}
+                  {(() => {
+                    const cfg = viewingProperty.installment_config;
+                    const sqm = Number(cfg.minSqm);
+                    const price = Number(cfg.pricePerSqm) * sqm;
+                    const deposit = (Number(cfg.minDepositPercent) / 100) * price;
+                    const principal = price - deposit;
+                    const months = Number(cfg.duration);
+                    const monthlyInterest = Number(cfg.interestRate) / 100;
+                    const monthly = (principal * (1 + monthlyInterest * months)) / months;
+                    const total = deposit + monthly * months;
+                    return (
+                      <div className="mt-3 p-3 bg-white border rounded">
+                        <div>First Deposit: <span className="font-bold">₦{deposit.toLocaleString()}</span></div>
+                        <div>Monthly Payment: <span className="font-bold">₦{monthly.toLocaleString()}</span></div>
+                        <div>Total (Deposit + Installments): <span className="font-bold">₦{total.toLocaleString()}</span></div>
+                        <div className="text-xs text-gray-500 mt-1">* Based on minimum sqm and price per sqm</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Book Site Visit Modal */}
+      {bookingModalProperty && (
+        <Dialog open={!!bookingModalProperty} onOpenChange={() => setBookingModalProperty(null)}>
+          <DialogContent className="max-w-lg w-full">
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-brand-blue mb-2">Book Site Visit for {bookingModalProperty.title}</h2>
+              <form onSubmit={handleBookSiteVisit} className="space-y-3">
+                <Input
+                  name="name"
+                  placeholder="Your Full Name"
+                  value={bookingForm.name}
+                  onChange={e => setBookingForm(f => ({ ...f, name: e.target.value }))}
+                  required
+                />
+                <Input
+                  name="email"
+                  type="email"
+                  placeholder="Your Email"
+                  value={bookingForm.email}
+                  onChange={e => setBookingForm(f => ({ ...f, email: e.target.value }))}
+                  required
+                />
+                <Input
+                  name="phone"
+                  type="tel"
+                  placeholder="Your Phone Number"
+                  value={bookingForm.phone}
+                  onChange={e => setBookingForm(f => ({ ...f, phone: e.target.value }))}
+                  required
+                />
+                <Input
+                  name="preferred_date"
+                  type="date"
+                  value={bookingForm.preferred_date}
+                  onChange={e => setBookingForm(f => ({ ...f, preferred_date: e.target.value }))}
+                  required
+                />
+                <Input
+                  name="preferred_time"
+                  type="time"
+                  value={bookingForm.preferred_time}
+                  onChange={e => setBookingForm(f => ({ ...f, preferred_time: e.target.value }))}
+                  required
+                />
+                <Textarea
+                  name="message"
+                  placeholder="Additional message or requirements"
+                  value={bookingForm.message}
+                  onChange={e => setBookingForm(f => ({ ...f, message: e.target.value }))}
+                  rows={3}
+                />
+                <Button
+                  type="submit"
+                  className="w-full bg-brand-gold text-brand-blue"
+                  disabled={bookingLoading}
+                >
+                  {bookingLoading ? 'Booking...' : 'Book Site Visit'}
+                </Button>
+              </form>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

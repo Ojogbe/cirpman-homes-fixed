@@ -13,26 +13,98 @@ import { Upload, Plus, X } from 'lucide-react';
 interface PropertyUploadFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  property?: any;
 }
 
-const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCancel }) => {
+const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCancel, property }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    location: '',
-    size_min: '',
-    size_max: '',
-    price_min: '',
-    price_max: '',
-    status: 'Available',
-    progress: 'Planned',
-    installment_available: false
+    title: property?.title || '',
+    description: property?.description || '',
+    location: property?.location || '',
+    google_maps: property?.google_maps || '',
+    size_min: property?.size_min?.toString() || '',
+    size_max: property?.size_max?.toString() || '',
+    price_min: property?.price_min?.toString() || '',
+    price_max: property?.price_max?.toString() || '',
+    status: property?.status || 'Available',
+    progress: property?.progress || 'Planned',
+    installment_available: property?.installment_available || false
   });
 
   const [images, setImages] = useState<File[]>([]);
   const [videos, setVideos] = useState<File[]>([]);
   const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null);
+  const [installmentConfig, setInstallmentConfig] = useState({
+    duration: '12',
+    minDepositPercent: '',
+    interestRate: '',
+    pricePerSqm: '',
+    minSqm: '',
+    maxSqm: '',
+  });
+  const [installmentPreview, setInstallmentPreview] = useState({
+    firstDeposit: 0,
+    monthly: 0,
+    total: 0,
+  });
+
+  React.useEffect(() => {
+    if (property) {
+      setFormData({
+        title: property.title || '',
+        description: property.description || '',
+        location: property.location || '',
+        google_maps: property.google_maps || '',
+        size_min: property.size_min?.toString() || '',
+        size_max: property.size_max?.toString() || '',
+        price_min: property.price_min?.toString() || '',
+        price_max: property.price_max?.toString() || '',
+        status: property.status || 'Available',
+        progress: property.progress || 'Planned',
+        installment_available: property.installment_available || false
+      });
+      // No file objects for images/videos, so skip for now
+    }
+  }, [property]);
+
+  React.useEffect(() => {
+    if (property && property.installment_config) {
+      setInstallmentConfig({
+        duration: property.installment_config.duration?.toString() || '12',
+        minDepositPercent: property.installment_config.minDepositPercent?.toString() || '',
+        interestRate: property.installment_config.interestRate?.toString() || '',
+        pricePerSqm: property.installment_config.pricePerSqm?.toString() || '',
+        minSqm: property.installment_config.minSqm?.toString() || '',
+        maxSqm: property.installment_config.maxSqm?.toString() || '',
+      });
+    }
+  }, [property]);
+
+  React.useEffect(() => {
+    // Only calculate if all fields are filled
+    const { duration, minDepositPercent, interestRate, pricePerSqm, minSqm, maxSqm } = installmentConfig;
+    if (
+      formData.installment_available &&
+      duration && minDepositPercent && interestRate && pricePerSqm && minSqm && maxSqm
+    ) {
+      const sqm = Number(minSqm);
+      const price = Number(pricePerSqm) * sqm;
+      const deposit = (Number(minDepositPercent) / 100) * price;
+      const principal = price - deposit;
+      const months = Number(duration);
+      const monthlyInterest = Number(interestRate) / 100;
+      // Simple interest for each month
+      const monthly = (principal * (1 + monthlyInterest * months)) / months;
+      setInstallmentPreview({
+        firstDeposit: deposit,
+        monthly,
+        total: deposit + monthly * months,
+      });
+    } else {
+      setInstallmentPreview({ firstDeposit: 0, monthly: 0, total: 0 });
+    }
+  }, [installmentConfig, formData.installment_available]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -45,6 +117,11 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
 
   const handleSwitchChange = (checked: boolean) => {
     setFormData(prev => ({ ...prev, installment_available: checked }));
+  };
+
+  const handleInstallmentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setInstallmentConfig(prev => ({ ...prev, [name]: value }));
   };
 
   const handleFileUpload = async (file: File, bucket: string, folder: string) => {
@@ -75,20 +152,24 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
       }
 
       // Upload featured image
-      let featuredImageUrl = '';
+      let featuredImageUrl = property?.featured_image || '';
       if (featuredImageFile) {
         featuredImageUrl = await handleFileUpload(featuredImageFile, 'real-estate-uploads', 'featured');
       }
 
       // Upload additional images
-      const imageUrls = await Promise.all(
-        images.map(img => handleFileUpload(img, 'real-estate-uploads', 'images'))
-      );
+      let imageUrls = property?.images || [];
+      if (images.length > 0) {
+        const uploaded = await Promise.all(images.map(img => handleFileUpload(img, 'real-estate-uploads', 'images')));
+        imageUrls = [...imageUrls, ...uploaded];
+      }
 
       // Upload videos
-      const videoUrls = await Promise.all(
-        videos.map(video => handleFileUpload(video, 'real-estate-uploads', 'videos'))
-      );
+      let videoUrls = property?.videos || [];
+      if (videos.length > 0) {
+        const uploaded = await Promise.all(videos.map(video => handleFileUpload(video, 'real-estate-uploads', 'videos')));
+        videoUrls = [...videoUrls, ...uploaded];
+      }
 
       // Create property record
       const propertyData = {
@@ -104,19 +185,37 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
         installment_available: formData.installment_available,
         featured_image: featuredImageUrl,
         images: imageUrls,
-        videos: videoUrls
+        videos: videoUrls,
+        ...(formData.installment_available ? { installment_config: {
+          duration: Number(installmentConfig.duration),
+          minDepositPercent: Number(installmentConfig.minDepositPercent),
+          interestRate: Number(installmentConfig.interestRate),
+          pricePerSqm: Number(installmentConfig.pricePerSqm),
+          minSqm: Number(installmentConfig.minSqm),
+          maxSqm: Number(installmentConfig.maxSqm),
+        }} : {}),
       };
 
-      const { error } = await supabase
-        .from('properties')
-        .insert([propertyData]);
+      let error;
+      if (property) {
+        // Update
+        ({ error } = await supabase
+          .from('properties')
+          .update(propertyData)
+          .eq('id', property.id));
+      } else {
+        // Create
+        ({ error } = await supabase
+          .from('properties')
+          .insert([propertyData]));
+      }
 
       if (error) throw error;
 
-      toast.success('Property uploaded successfully!');
+      toast.success(property ? 'Property updated successfully!' : 'Property uploaded successfully!');
       onSuccess?.();
     } catch (error: any) {
-      toast.error(`Failed to upload property: ${error.message}`);
+      toast.error(`Failed to ${property ? 'update' : 'upload'} property: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -149,8 +248,8 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
   return (
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle>Upload New Property</CardTitle>
-        <CardDescription>Add a new property to the portfolio</CardDescription>
+        <CardTitle>{property ? 'Edit Property' : 'Upload New Property'}</CardTitle>
+        <CardDescription>{property ? 'Edit property details' : 'Add a new property to the portfolio'}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -177,6 +276,17 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
                 onChange={handleInputChange}
                 placeholder="Enter property location"
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="google_maps">Google Maps Location</Label>
+              <Input
+                id="google_maps"
+                name="google_maps"
+                value={formData.google_maps || ''}
+                onChange={handleInputChange}
+                placeholder="Enter Google Maps link or coordinates"
               />
             </div>
           </div>
@@ -290,6 +400,96 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
             />
             <Label>Installment payments available</Label>
           </div>
+          {formData.installment_available && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border p-4 rounded bg-gray-50 mt-2">
+              <div className="space-y-2">
+                <Label>Duration (months)</Label>
+                <select
+                  name="duration"
+                  value={installmentConfig.duration}
+                  onChange={handleInstallmentChange}
+                  className="w-full border rounded px-2 py-1"
+                  required
+                >
+                  <option value="3">3</option>
+                  <option value="6">6</option>
+                  <option value="12">12</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Min First Deposit (%)</Label>
+                <Input
+                  name="minDepositPercent"
+                  type="number"
+                  min="1"
+                  max="99"
+                  value={installmentConfig.minDepositPercent}
+                  onChange={handleInstallmentChange}
+                  placeholder="e.g. 20"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Monthly Interest Rate (%)</Label>
+                <Input
+                  name="interestRate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={installmentConfig.interestRate}
+                  onChange={handleInstallmentChange}
+                  placeholder="e.g. 2"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Price per sqm (NGN)</Label>
+                <Input
+                  name="pricePerSqm"
+                  type="number"
+                  min="1"
+                  value={installmentConfig.pricePerSqm}
+                  onChange={handleInstallmentChange}
+                  placeholder="e.g. 50000"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Min Sqm</Label>
+                <Input
+                  name="minSqm"
+                  type="number"
+                  min="1"
+                  value={installmentConfig.minSqm}
+                  onChange={handleInstallmentChange}
+                  placeholder="e.g. 300"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Max Sqm</Label>
+                <Input
+                  name="maxSqm"
+                  type="number"
+                  min={installmentConfig.minSqm || 1}
+                  value={installmentConfig.maxSqm}
+                  onChange={handleInstallmentChange}
+                  placeholder="e.g. 600"
+                  required
+                />
+              </div>
+              <div className="col-span-2 mt-2">
+                <div className="p-3 bg-white border rounded">
+                  <div className="font-semibold mb-1">Installment Breakdown Preview</div>
+                  <div>First Deposit: <span className="font-bold">₦{installmentPreview.firstDeposit.toLocaleString()}</span></div>
+                  <div>Monthly Payment: <span className="font-bold">₦{installmentPreview.monthly.toLocaleString()}</span></div>
+                  <div>Total (Deposit + Installments): <span className="font-bold">₦{installmentPreview.total.toLocaleString()}</span></div>
+                  <div className="text-xs text-gray-500 mt-1">* Based on minimum sqm and price per sqm</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Featured Image Upload */}
           <div className="space-y-2">
@@ -412,7 +612,7 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
               disabled={loading}
               className="bg-brand-gold hover:bg-brand-gold/90 text-brand-blue"
             >
-              {loading ? 'Uploading...' : 'Upload Property'}
+              {loading ? (property ? 'Updating...' : 'Uploading...') : (property ? 'Update Property' : 'Upload Property')}
             </Button>
           </div>
         </form>

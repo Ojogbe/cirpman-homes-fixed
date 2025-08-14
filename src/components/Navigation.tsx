@@ -75,7 +75,13 @@ const Navigation = () => {
 
   const moreItems = [
     { name: 'Progress', path: '/progress' },
-    { name: 'Gallery', path: '/gallery' }
+    { name: 'Gallery', path: '/gallery' },
+    { name: 'Blog', path: '/blog' },
+    { name: 'Testimonials', path: '/testimonials' },
+    { name: 'FAQ', path: '/faq' },
+    { name: 'Feedback', path: '/feedback' },
+    { name: 'Start an Installment', path: '/customer-subscription' },
+    { name: 'Become a Consultant', path: '/consultant-subscription' }
   ];
 
   const isActive = (path: string) => location.pathname === path;

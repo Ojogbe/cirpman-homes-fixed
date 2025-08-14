@@ -122,6 +122,28 @@ const SiteVisitsManagementEnhanced = () => {
 
   return (
     <div className="space-y-6">
+      {/* Statistics Card - move to top */}
+      {bookings.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Booking Statistics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {['Pending', 'Contacted', 'Scheduled', 'Completed', 'Cancelled'].map(status => {
+                const count = bookings.filter(b => b.follow_up_status === status).length;
+                return (
+                  <div key={status} className="text-center">
+                    <div className="text-2xl font-bold text-brand-gold">{count}</div>
+                    <div className="text-sm text-gray-600">{status}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {/* Site Visit Bookings Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -240,28 +262,6 @@ const SiteVisitsManagementEnhanced = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Statistics Card */}
-      {bookings.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Booking Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {['Pending', 'Contacted', 'Scheduled', 'Completed', 'Cancelled'].map(status => {
-                const count = bookings.filter(b => b.follow_up_status === status).length;
-                return (
-                  <div key={status} className="text-center">
-                    <div className="text-2xl font-bold text-brand-gold">{count}</div>
-                    <div className="text-sm text-gray-600">{status}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

@@ -49,6 +49,14 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Cirpman Homes Brand Colors */
+    --brand-blue: #0b3d91;
+    --brand-blue-light: #1e5bb8;
+    --brand-grey: #b0b0b0;
+    --brand-grey-light: #d1d1d1;
+    --brand-gold: #d4af37;
+    --brand-gold-light: #e6c866;
   }
 
   .dark {

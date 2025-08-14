@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, TrendingUp, Shield, Building } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const WhyInvest = () => {
   const benefits = [
@@ -69,9 +70,11 @@ const WhyInvest = () => {
             Don't miss out on this opportunity to secure premium plots in Nigeria's most promising real estate development.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-brand-gold hover:bg-brand-gold/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors">
-              Schedule Site Inspection
-            </button>
+            <Link to="/book-site-visit">
+              <button className="bg-brand-gold hover:bg-brand-gold/90 text-brand-blue px-8 py-4 rounded-lg font-semibold text-lg transition-colors">
+                Schedule Site Inspection
+              </button>
+            </Link>
             <button className="border-2 border-white text-white hover:bg-white hover:text-brand-blue px-8 py-4 rounded-lg font-semibold text-lg transition-colors">
               Download Brochure
             </button>

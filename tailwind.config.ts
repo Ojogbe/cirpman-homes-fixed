@@ -64,10 +64,12 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				brand: {
-					blue: '#1e3a8a',
-					'blue-light': '#3b82f6',
-					gold: '#D4AF37',
-					'gold-light': '#F4E683'
+					blue: '#0b3d91', // Royal Blue
+					'blue-light': '#1e5bb8',
+					grey: '#b0b0b0', // Grey/Ash
+					'grey-light': '#d1d1d1',
+					gold: '#d4af37', // Gold
+					'gold-light': '#e6c866'
 				}
 			},
 			borderRadius: {

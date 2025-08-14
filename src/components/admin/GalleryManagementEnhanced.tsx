@@ -28,7 +28,7 @@ const GalleryManagementEnhanced = () => {
   const [uploadForm, setUploadForm] = useState({
     title: '',
     description: '',
-    category: 'Construction'
+    category: 'Drone Shots',
   });
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
 
@@ -117,7 +117,7 @@ const GalleryManagementEnhanced = () => {
 
       toast.success('Gallery items uploaded successfully!');
       setShowUploadForm(false);
-      setUploadForm({ title: '', description: '', category: 'Construction' });
+      setUploadForm({ title: '', description: '', category: 'Drone Shots' });
       setMediaFiles([]);
       fetchGalleryItems();
     } catch (error: any) {
@@ -221,9 +221,9 @@ const GalleryManagementEnhanced = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="Drone Shots">Drone Shots</SelectItem>
+                          <SelectItem value="Allocation Events">Allocation Events</SelectItem>
                           <SelectItem value="Construction">Construction</SelectItem>
-                          <SelectItem value="Completed">Completed</SelectItem>
-                          <SelectItem value="Amenities">Amenities</SelectItem>
                           <SelectItem value="Events">Events</SelectItem>
                         </SelectContent>
                       </Select>

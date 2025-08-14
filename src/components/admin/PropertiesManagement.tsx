@@ -32,6 +32,7 @@ const PropertiesManagement = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
   useEffect(() => {
     fetchProperties();
@@ -139,7 +140,10 @@ const PropertiesManagement = () => {
                 Manage your property listings
               </CardDescription>
             </div>
-            <Dialog open={showUploadForm} onOpenChange={setShowUploadForm}>
+            <Dialog open={showUploadForm || !!editingProperty} onOpenChange={(open) => {
+              setShowUploadForm(open);
+              if (!open) setEditingProperty(null);
+            }}>
               <DialogTrigger asChild>
                 <Button className="bg-brand-gold hover:bg-brand-gold/90 text-brand-blue">
                   <Plus className="h-4 w-4 mr-2" />
@@ -147,12 +151,17 @@ const PropertiesManagement = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <PropertyUploadForm 
+                <PropertyUploadForm
+                  property={editingProperty}
                   onSuccess={() => {
                     setShowUploadForm(false);
+                    setEditingProperty(null);
                     fetchProperties();
                   }}
-                  onCancel={() => setShowUploadForm(false)}
+                  onCancel={() => {
+                    setShowUploadForm(false);
+                    setEditingProperty(null);
+                  }}
                 />
               </DialogContent>
             </Dialog>
@@ -207,7 +216,7 @@ const PropertiesManagement = () => {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => setEditingProperty(property)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -73,17 +74,31 @@ const Contact = () => {
                 <div>
                   <h3 className="font-semibold">Email</h3>
                   <p className="text-gray-600">info@cirpmanhomesltd.com</p>
+                  <p className="text-gray-600">@cirpmanhomesltd@gmail.com</p>
                 </div>
               </div>
               
               <div className="flex items-start space-x-4">
                 <MapPin className="h-6 w-6 text-brand-gold mt-1" />
                 <div>
-                  <h3 className="font-semibold">Address</h3>
-                  <p className="text-gray-600">
-                    Suite 12, OJEJE Plaza, Secretariat Road<br />
-                    Gwagwalada, Abuja.
-                  </p>
+                  <h3 className="font-semibold">Office Locations</h3>
+                  <div className="space-y-2 text-gray-600">
+                    <p>
+                      <strong>Main Office:</strong><br />
+                      Suite 12, OJEJE Plaza, Secretariat Road<br />
+                      Gwagwalada, Abuja.
+                    </p>
+                    <p>
+                      <strong>Branch Office 1:</strong><br />
+                      Suite B27, Zampoles Plaza<br />
+                      Kaduna-Lokoja Expressway, Gwagwalada
+                    </p>
+                    <p>
+                      <strong>Branch Office 2:</strong><br />
+                      Suite 1, E & E, El'Rufai Corner Shop<br />
+                      Tunga-Maje
+                    </p>
+                  </div>
                 </div>
               </div>
               
@@ -163,6 +178,7 @@ const Contact = () => {
           </Card>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

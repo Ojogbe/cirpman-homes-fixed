@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { MapPin, Users, Calendar, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Hero = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -60,19 +61,23 @@ const Hero = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-12 sm:mb-16 animate-slide-up px-4">
-            <Button 
-              size="lg" 
-              className="bg-brand-gold hover:bg-brand-gold/90 text-brand-blue px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold w-full sm:w-auto"
-            >
-              Book a Site Visit
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="border-2 border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-brand-blue px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold w-full sm:w-auto bg-transparent"
-            >
-              Explore Properties
-            </Button>
+            <Link to="/book-site-visit">
+              <Button 
+                size="lg" 
+                className="bg-brand-gold hover:bg-brand-gold/90 text-brand-blue px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold w-full sm:w-auto"
+              >
+                Book a Site Visit
+              </Button>
+            </Link>
+            <Link to="/properties">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="border-2 border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-brand-blue px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold w-full sm:w-auto bg-transparent"
+              >
+                Explore Properties
+              </Button>
+            </Link>
           </div>
 
           {/* Stats */}

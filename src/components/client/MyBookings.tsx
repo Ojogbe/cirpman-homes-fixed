@@ -86,6 +86,10 @@ const MyBookings = () => {
     );
   }
 
+  const ACCOUNT_NUMBER = '1234567890'; // Replace with real account number
+  const paidBookings = bookings.filter(b => b.installment_plans[0]?.status === 'Paid in Full');
+  const unpaidBookings = bookings.filter(b => b.installment_plans[0]?.status !== 'Paid in Full');
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -100,115 +104,182 @@ const MyBookings = () => {
           Book New Property
         </Button>
       </div>
-
-      {bookings.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Building className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-gray-900 mb-2">No Property Bookings</h3>
-            <p className="text-gray-500 mb-4">Start your real estate investment journey today</p>
-            <Button
-              onClick={() => setShowPropertySelection(true)}
-              className="bg-brand-blue hover:bg-brand-blue/90 text-white"
-            >
-              Browse Properties
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6">
-          {bookings.map((booking) => {
-            const installmentPlan = booking.installment_plans[0];
-            const progress = installmentPlan 
-              ? (installmentPlan.total_paid / installmentPlan.total_amount) * 100 
-              : 0;
-
-            return (
-              <Card key={booking.id} className="overflow-hidden">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-xl text-brand-blue flex items-center">
-                        <Building className="h-5 w-5 mr-2" />
-                        {booking.properties.title}
-                      </CardTitle>
-                      <p className="text-gray-600">{booking.properties.location}</p>
-                    </div>
-                    <Badge variant={booking.properties.status === 'Available' ? 'default' : 'secondary'}>
-                      {booking.properties.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <CreditCard className="h-4 w-4 mr-2 text-brand-blue" />
-                        <span className="font-medium">Total Investment</span>
+      {/* Unpaid Bookings */}
+      <div>
+        <h3 className="text-xl font-semibold text-red-600 mb-2">Unpaid / Ongoing Bookings</h3>
+        {unpaidBookings.length === 0 ? (
+          <div className="text-gray-500">No unpaid or ongoing bookings.</div>
+        ) : (
+          <div className="grid gap-6">
+            {unpaidBookings.map((booking) => {
+              const installmentPlan = booking.installment_plans[0];
+              const progress = installmentPlan ? (installmentPlan.total_paid / installmentPlan.total_amount) * 100 : 0;
+              return (
+                <Card key={booking.id} className="overflow-hidden border-red-300">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-xl text-brand-blue flex items-center">
+                          <Building className="h-5 w-5 mr-2" />
+                          {booking.properties.title}
+                        </CardTitle>
+                        <p className="text-gray-600">{booking.properties.location}</p>
                       </div>
-                      <p className="text-2xl font-bold text-brand-gold">
-                        ₦{booking.total_price.toLocaleString()}
-                      </p>
+                      <Badge variant={booking.properties.status === 'Available' ? 'default' : 'secondary'}>
+                        {booking.properties.status}
+                      </Badge>
                     </div>
-
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center mb-2">
+                          <CreditCard className="h-4 w-4 mr-2 text-brand-blue" />
+                          <span className="font-medium">Total Investment</span>
+                        </div>
+                        <p className="text-2xl font-bold text-brand-gold">
+                          ₦{booking.total_price.toLocaleString()}
+                        </p>
+                      </div>
+                      {installmentPlan && (
+                        <>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex items-center mb-2">
+                              <Calendar className="h-4 w-4 mr-2 text-brand-blue" />
+                              <span className="font-medium">Payment Progress</span>
+                            </div>
+                            <p className="text-2xl font-bold text-green-600">
+                              {progress.toFixed(1)}%
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              ₦{installmentPlan.total_paid.toLocaleString()} of ₦{installmentPlan.total_amount.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex items-center mb-2">
+                              <CreditCard className="h-4 w-4 mr-2 text-brand-blue" />
+                              <span className="font-medium">Next Payment</span>
+                            </div>
+                            <p className="text-2xl font-bold text-brand-blue">
+                              ₦{installmentPlan.next_payment_amount.toLocaleString()}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Due: {new Date(installmentPlan.next_payment_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
                     {installmentPlan && (
-                      <>
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <div className="flex items-center mb-2">
-                            <Calendar className="h-4 w-4 mr-2 text-brand-blue" />
-                            <span className="font-medium">Payment Progress</span>
-                          </div>
-                          <p className="text-2xl font-bold text-green-600">
-                            {progress.toFixed(1)}%
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            ₦{installmentPlan.total_paid.toLocaleString()} of ₦{installmentPlan.total_amount.toLocaleString()}
-                          </p>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Payment Status:</span>
+                          <Badge variant={installmentPlan.status === 'On Track' ? 'default' : 'destructive'}>
+                            {installmentPlan.status}
+                          </Badge>
                         </div>
-
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <div className="flex items-center mb-2">
-                            <CreditCard className="h-4 w-4 mr-2 text-brand-blue" />
-                            <span className="font-medium">Next Payment</span>
-                          </div>
-                          <p className="text-2xl font-bold text-brand-blue">
-                            ₦{installmentPlan.next_payment_amount.toLocaleString()}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Due: {new Date(installmentPlan.next_payment_date).toLocaleDateString()}
-                          </p>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-brand-gold h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          />
                         </div>
-                      </>
+                      </div>
                     )}
-                  </div>
-
-                  {installmentPlan && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Payment Status:</span>
-                        <Badge variant={installmentPlan.status === 'On Track' ? 'default' : 'destructive'}>
-                          {installmentPlan.status}
-                        </Badge>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-brand-gold h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
-                      </div>
+                    <div className="text-sm text-gray-500">
+                      Booked on: {new Date(booking.created_at).toLocaleDateString()}
                     </div>
-                  )}
-
-                  <div className="text-sm text-gray-500">
-                    Booked on: {new Date(booking.created_at).toLocaleDateString()}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                    {/* Account number and notify admin button */}
+                    <div className="mt-4 p-3 bg-yellow-50 border rounded">
+                      <div className="mb-2">Please make your payment to:</div>
+                      <div className="font-bold text-lg mb-1">Account Number: <span className="text-brand-blue">{ACCOUNT_NUMBER}</span></div>
+                      <Button
+                        className="bg-brand-blue text-white mt-2"
+                        onClick={() => toast.success('Admin has been notified of your payment!')}
+                      >
+                        Notify Admin of Payment
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {/* Paid Bookings */}
+      <div>
+        <h3 className="text-xl font-semibold text-green-700 mb-2 mt-8">Paid Bookings</h3>
+        {paidBookings.length === 0 ? (
+          <div className="text-gray-500">No fully paid bookings yet.</div>
+        ) : (
+          <div className="grid gap-6">
+            {paidBookings.map((booking) => {
+              const installmentPlan = booking.installment_plans[0];
+              const progress = installmentPlan ? (installmentPlan.total_paid / installmentPlan.total_amount) * 100 : 0;
+              return (
+                <Card key={booking.id} className="overflow-hidden border-green-300">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-xl text-brand-blue flex items-center">
+                          <Building className="h-5 w-5 mr-2" />
+                          {booking.properties.title}
+                        </CardTitle>
+                        <p className="text-gray-600">{booking.properties.location}</p>
+                      </div>
+                      <Badge variant={booking.properties.status === 'Available' ? 'default' : 'secondary'}>
+                        {booking.properties.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center mb-2">
+                          <CreditCard className="h-4 w-4 mr-2 text-brand-blue" />
+                          <span className="font-medium">Total Investment</span>
+                        </div>
+                        <p className="text-2xl font-bold text-brand-gold">
+                          ₦{booking.total_price.toLocaleString()}
+                        </p>
+                      </div>
+                      {installmentPlan && (
+                        <>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex items-center mb-2">
+                              <Calendar className="h-4 w-4 mr-2 text-brand-blue" />
+                              <span className="font-medium">Payment Progress</span>
+                            </div>
+                            <p className="text-2xl font-bold text-green-600">
+                              {progress.toFixed(1)}%
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              ₦{installmentPlan.total_paid.toLocaleString()} of ₦{installmentPlan.total_amount.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex items-center mb-2">
+                              <CreditCard className="h-4 w-4 mr-2 text-brand-blue" />
+                              <span className="font-medium">Status</span>
+                            </div>
+                            <p className="text-2xl font-bold text-green-700">
+                              Paid in Full
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Booked on: {new Date(booking.created_at).toLocaleDateString()}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

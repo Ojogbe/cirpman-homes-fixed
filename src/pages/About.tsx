@@ -56,6 +56,11 @@ const teamMembers: TeamMember[] = [
     role: 'Front Desk Officer',
     image_url: '/lovable-uploads/THE TEAM/Maris Okoeror - Front Desk Officer.jpg',
   },
+  {
+    name: 'Wisdom Matthew Omokhudu',
+    role: 'Account and Finance Officer',
+    image_url: '/lovable-uploads/THE TEAM/Wisdom Matthew Omokhudu - Account and Finance Officer.jpg',
+  },
 ];
 
 const About = () => {
