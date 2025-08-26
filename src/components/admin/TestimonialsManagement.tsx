@@ -22,7 +22,9 @@ interface Testimonial {
   status: string;
   client_photo_url: string;
   created_at: string;
-  property: {
+  property_id?: string;
+  property?: {
+    id?: string;
     title: string;
     location: string;
   };
@@ -66,7 +68,7 @@ const TestimonialsManagement = () => {
         .from('testimonials')
         .select(`
           *,
-          property:properties(title, location)
+          property:properties(id, title, location)
         `)
         .order('created_at', { ascending: false });
 
@@ -205,7 +207,7 @@ const TestimonialsManagement = () => {
       featured: testimonial.featured,
       status: testimonial.status,
       client_photo_url: testimonial.client_photo_url || '',
-      property_id: testimonial.property?.id || ''
+      property_id: testimonial.property_id || testimonial.property?.id || ''
     });
     setDialogOpen(true);
   };
