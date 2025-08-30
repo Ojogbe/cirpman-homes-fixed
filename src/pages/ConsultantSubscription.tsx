@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import { getRecaptchaToken } from '@/lib/recaptcha';
 
 const ConsultantSubscription = () => {
   const [loading, setLoading] = useState(false);
+  const [consultantSubscriptionPaymentLink, setConsultantSubscriptionPaymentLink] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     // Personal Information
     firstName: '',
@@ -52,6 +53,28 @@ const ConsultantSubscription = () => {
     // Files
     passportPhoto: null as File | null,
   });
+
+  useEffect(() => {
+    fetchPaymentLink();
+  }, []);
+
+  const fetchPaymentLink = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payment_links')
+        .select('link_url')
+        .eq('section_name', 'Consultant Application') // Assuming a section_name for consultant applications
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setConsultantSubscriptionPaymentLink(data.link_url);
+      }
+    } catch (error: any) {
+      toast.error('Failed to fetch consultant application payment link: ' + error.message);
+      console.error('Error fetching payment link:', error);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -194,14 +217,19 @@ const ConsultantSubscription = () => {
       return;
     }
 
-    // Default application fee for consultant applications
-    const paymentAmount = 10000; // ₦10,000 application fee
+    if (!consultantSubscriptionPaymentLink) {
+      toast.error('Payment link not available. Please try again later or contact support.');
+      return;
+    }
 
-    // Paystack payment link (replace with actual Paystack link when available)
-    const paystackLink = `https://paystack.com/pay/cirpman-homes-consultant-application?amount=${paymentAmount * 100}&email=${formData.email}&metadata[subscription_type]=consultant&metadata[consultant_name]=${formData.firstName} ${formData.lastName}`;
+    // For consultant applications, we don't calculate amount here as it's expected to be part of the fetched link
+    // const paymentAmount = 10000; // ₦10,000 application fee
+
+    // Use the fetched payment link
+    const finalPaymentLink = consultantSubscriptionPaymentLink;
     
-    // Open Paystack payment in new tab
-    window.open(paystackLink, '_blank');
+    // Open payment link in new tab
+    window.open(finalPaymentLink, '_blank');
     
     toast.success('Payment page opened in new tab. Please complete your application fee payment.');
   };

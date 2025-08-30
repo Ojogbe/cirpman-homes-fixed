@@ -16,6 +16,7 @@ import { getRecaptchaToken } from '@/lib/recaptcha';
 const CustomerSubscription = () => {
   const [loading, setLoading] = useState(false);
   const [properties, setProperties] = useState<any[]>([]);
+  const [customerSubscriptionPaymentLink, setCustomerSubscriptionPaymentLink] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     // Personal Information
     surname: '',
@@ -52,6 +53,7 @@ const CustomerSubscription = () => {
     
     // Files
     passportPhoto: null as File | null,
+    passportPhotoUrl: null as string | null,
   });
 
   const [installmentPreview, setInstallmentPreview] = useState({
@@ -62,6 +64,7 @@ const CustomerSubscription = () => {
 
   useEffect(() => {
     fetchProperties();
+    fetchPaymentLink();
   }, []);
 
   const fetchProperties = async () => {
@@ -75,6 +78,24 @@ const CustomerSubscription = () => {
       setProperties(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch properties: ' + error.message);
+    }
+  };
+
+  const fetchPaymentLink = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payment_links')
+        .select('link_url')
+        .eq('section_name', 'Customer Subscription') // Assuming a section_name for customer subscriptions
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setCustomerSubscriptionPaymentLink(data.link_url);
+      }
+    } catch (error: any) {
+      toast.error('Failed to fetch customer subscription payment link: ' + error.message);
+      console.error('Error fetching payment link:', error);
     }
   };
 
@@ -101,15 +122,35 @@ const CustomerSubscription = () => {
     }));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'passportPhoto') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'passportPhoto') => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error('Passport photo must be less than 5MB');
+        return;
+      }
+      
       if (type === 'passportPhoto') {
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
-          toast.error('Passport photo must be less than 5MB');
-          return;
+        setLoading(true);
+        try {
+          const fileName = `passport-photos/${Date.now()}-${file.name}`;
+          const { error: uploadError } = await supabase.storage
+            .from('real-estate-uploads')
+            .upload(fileName, file);
+          
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage
+            .from('real-estate-uploads')
+            .getPublicUrl(fileName);
+          
+          setFormData(prev => ({ ...prev, passportPhoto: file, passportPhotoUrl: publicUrl }));
+          toast.success('Passport photo uploaded successfully!');
+        } catch (error: any) {
+          toast.error('Failed to upload passport photo: ' + error.message);
+        } finally {
+          setLoading(false);
         }
-        setFormData(prev => ({ ...prev, passportPhoto: file }));
       }
     }
   };
@@ -146,27 +187,28 @@ const CustomerSubscription = () => {
     setLoading(true);
 
     try {
-      // Upload passport photo
-      let passportPhotoUrl = '';
-      if (formData.passportPhoto) {
-        const fileName = `passport-photos/${Date.now()}-${formData.passportPhoto.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('real-estate-uploads')
-          .upload(fileName, formData.passportPhoto);
+      // Upload passport photo is now handled by handleFileUpload
+      // We just need the URL for subscriptionData
+      // let passportPhotoUrl = '';
+      // if (formData.passportPhoto) {
+      //   const fileName = `passport-photos/${Date.now()}-${formData.passportPhoto.name}`;
+      //   const { error: uploadError } = await supabase.storage
+      //     .from('real-estate-uploads')
+      //     .upload(fileName, formData.passportPhoto);
         
-        if (uploadError) throw uploadError;
+      //   if (uploadError) throw uploadError;
         
-        const { data: { publicUrl } } = supabase.storage
-          .from('real-estate-uploads')
-          .getPublicUrl(fileName);
+      //   const { data: { publicUrl } } = supabase.storage
+      //     .from('real-estate-uploads')
+      //     .getPublicUrl(fileName);
         
-        passportPhotoUrl = publicUrl;
-      }
+      //   passportPhotoUrl = publicUrl;
+      // }
 
       // Save subscription data
       const subscriptionData = {
         ...formData,
-        passport_photo_url: passportPhotoUrl,
+        passport_photo_url: formData.passportPhotoUrl,
         installment_preview: installmentPreview,
         status: 'pending',
         created_at: new Date().toISOString()
@@ -188,7 +230,7 @@ const CustomerSubscription = () => {
       try {
         const pdfBytes = await generateCustomerSubscriptionPDF({
           ...formData,
-          passport_photo_url: passportPhotoUrl,
+          passport_photo_url: formData.passportPhotoUrl,
           installment_preview: installmentPreview,
         });
         downloadPDF(pdfBytes, `customer-subscription-${formData.surname}-${formData.firstName}.pdf`);
@@ -226,6 +268,7 @@ const CustomerSubscription = () => {
         digitalSignature: '',
         date: new Date().toISOString().split('T')[0],
         passportPhoto: null,
+        passportPhotoUrl: null,
       });
 
     } catch (error: any) {
@@ -244,6 +287,7 @@ const CustomerSubscription = () => {
     try {
       const pdfBytes = await generateCustomerSubscriptionPDF({
         ...formData,
+        passport_photo_url: formData.passportPhotoUrl || undefined,
         installment_preview: installmentPreview,
       });
       downloadPDF(pdfBytes, `customer-subscription-${formData.surname}-${formData.firstName}.pdf`);
@@ -260,16 +304,22 @@ const CustomerSubscription = () => {
       return;
     }
 
-    // Calculate payment amount based on installment preview or a default amount
-    const paymentAmount = installmentPreview.totalAmount > 0 
-      ? installmentPreview.totalAmount 
-      : 50000; // Default amount if no calculation available
+    // Use the fetched payment link if available, otherwise fallback to a default or error
+    if (!customerSubscriptionPaymentLink) {
+      toast.error('Payment link not available. Please try again later or contact support.');
+      return;
+    }
+
+    // For customer subscriptions, we don't calculate amount here as it's expected to be part of the fetched link
+    // const paymentAmount = installmentPreview.totalAmount > 0 
+    //   ? installmentPreview.totalAmount 
+    //   : 50000; // Default amount if no calculation available
 
     // Paystack payment link (replace with actual Paystack link when available)
-    const paystackLink = `https://paystack.com/pay/cirpman-homes-customer-subscription?amount=${paymentAmount * 100}&email=${formData.email}&metadata[subscription_type]=customer&metadata[customer_name]=${formData.surname} ${formData.firstName}`;
+    const finalPaymentLink = customerSubscriptionPaymentLink;
     
-    // Open Paystack payment in new tab
-    window.open(paystackLink, '_blank');
+    // Open payment link in new tab
+    window.open(finalPaymentLink, '_blank');
     
     toast.success('Payment page opened in new tab. Please complete your payment.');
   };

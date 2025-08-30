@@ -163,7 +163,7 @@ const Navigation = () => {
                 <ChevronDown className="h-4 w-4" />
               </button>
               {isMoreOpen && (
-                <div className="absolute top-full left-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200">
+                <div className="absolute top-full left-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
                   {moreItems.map((item) => (
                     <Link
                       key={item.name}
@@ -246,13 +246,13 @@ const Navigation = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px]">
-              <div className="flex flex-col space-y-6 mt-8">
+              <div className="flex flex-col space-y-6 mt-8 h-full overflow-y-auto">
                 {navItems.map((item) => (
                   <Link
                     key={item.name}
                     to={item.path}
                     onClick={() => setIsOpen(false)}
-                    className={`text-lg font-medium transition-colors ${
+                    className={`text-base font-medium transition-colors ${
                       isActive(item.path) ? 'text-brand-gold' : 'text-gray-700 hover:text-brand-blue'
                     }`}
                   >
@@ -265,7 +265,7 @@ const Navigation = () => {
                     key={item.name}
                     to={item.path}
                     onClick={() => setIsOpen(false)}
-                    className={`text-lg font-medium transition-colors ${
+                    className={`text-base font-medium transition-colors ${
                       isActive(item.path) ? 'text-brand-gold' : 'text-gray-700 hover:text-brand-blue'
                     }`}
                   >

@@ -7,13 +7,264 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
+
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
+      blog_posts: {
+        Row: {
+          author_id: string | null
+          content: string
+          created_at: string | null
+          excerpt: string | null
+          featured_image_url: string | null
+          id: string
+          meta_description: string | null
+          published_at: string | null
+          slug: string | null
+          status: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          view_count: number | null
+        }
+        Insert: {
+          author_id?: string | null
+          content: string
+          created_at?: string | null
+          excerpt?: string | null
+          featured_image_url?: string | null
+          id?: string
+          meta_description?: string | null
+          published_at?: string | null
+          slug?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          view_count?: number | null
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          created_at?: string | null
+          excerpt?: string | null
+          featured_image_url?: string | null
+          id?: string
+          meta_description?: string | null
+          published_at?: string | null
+          slug?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          booking_date: string
+          consultant_id: string | null
+          created_at: string | null
+          id: string
+          property_id: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          booking_date: string
+          consultant_id?: string | null
+          created_at?: string | null
+          id?: string
+          property_id?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          booking_date?: string
+          consultant_id?: string | null
+          created_at?: string | null
+          id?: string
+          property_id?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultant_subscriptions: {
+        Row: {
+          consultant_id: string | null
+          created_at: string | null
+          end_date: string
+          id: string
+          start_date: string
+          subscription_type: Database["public"]["Enums"]["subscription_type"]
+
+        }
+        Insert: {
+          consultant_id?: string | null
+          created_at?: string | null
+          end_date: string
+          id?: string
+          start_date: string
+          subscription_type: Database["public"]["Enums"]["subscription_type"]
+
+        }
+        Update: {
+          consultant_id?: string | null
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          start_date?: string
+          subscription_type?: Database["public"]["Enums"]["subscription_type"] 
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultant_subscriptions_consultant_id_fkey"
+
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultants: {
+        Row: {
+          created_at: string | null
+          expertise: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          expertise: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          expertise?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      customer_subscriptions: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: string
+          start_date: string
+          subscription_type: Database["public"]["Enums"]["subscription_type"]
+
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: string
+          start_date: string
+          subscription_type: Database["public"]["Enums"]["subscription_type"]
+
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          start_date?: string
+          subscription_type?: Database["public"]["Enums"]["subscription_type"] 
+          user_id?: string
+        }
+        Relationships: []
+      }
+      faq: {
+        Row: {
+          answer: string
+          category: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          order_index: number | null
+          question: string
+          updated_at: string | null
+        }
+        Insert: {
+          answer: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_index?: number | null
+          question: string
+          updated_at?: string | null
+        }
+        Update: {
+          answer?: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_index?: number | null
+          question?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      feedback: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          message: string
+          name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          message: string
+          name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          message?: string
+          name?: string | null
+        }
+        Relationships: []
+      }
       gallery: {
         Row: {
           category: Database["public"]["Enums"]["gallery_category"]
@@ -78,15 +329,7 @@ export type Database = {
           total_paid?: number
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "installment_plans_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "property_bookings"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       leadership_team: {
         Row: {
@@ -109,6 +352,36 @@ export type Database = {
           image_url?: string | null
           name?: string
           role?: string
+        }
+        Relationships: []
+      }
+      newsletter_subscriptions: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string | null
+          source: string | null
+          status: string | null
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          name?: string | null
+          source?: string | null
+          status?: string | null
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string | null
+          source?: string | null
+          status?: string | null
+          unsubscribed_at?: string | null
         }
         Relationships: []
       }
@@ -137,19 +410,36 @@ export type Database = {
           notes?: string | null
           payment_date?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "payment_history_installment_plan_id_fkey"
-            columns: ["installment_plan_id"]
-            isOneToOne: false
-            referencedRelation: "installment_plans"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      payment_links: {
+        Row: {
+          created_at: string | null
+          id: string
+          link_url: string
+          section_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          link_url: string
+          section_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          link_url?: string
+          section_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
           created_at: string | null
+          email: string | null
           full_name: string
           id: string
           phone: string | null
@@ -158,6 +448,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          email?: string | null
           full_name: string
           id: string
           phone?: string | null
@@ -166,6 +457,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          email?: string | null
           full_name?: string
           id?: string
           phone?: string | null
@@ -283,22 +575,28 @@ export type Database = {
           total_price?: number
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "property_bookings_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "property_bookings_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          id: string
+          last_request: string | null
+          request_count: number | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_request?: string | null
+          request_count?: number | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_request?: string | null
+          request_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
       }
       site_visit_bookings: {
         Row: {
@@ -337,12 +635,69 @@ export type Database = {
           preferred_time?: string
           user_id?: string | null
         }
+        Relationships: []
+      }
+      testimonials: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          client_company: string | null
+          client_name: string | null
+          client_photo_url: string | null
+          client_title: string | null
+          created_at: string | null
+          customer_name: string
+          featured: boolean | null
+          id: string
+          message: string
+          property_id: string | null
+          rating: number | null
+          status: string | null
+          testimonial_text: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_company?: string | null
+          client_name?: string | null
+          client_photo_url?: string | null
+          client_title?: string | null
+          created_at?: string | null
+          customer_name: string
+          featured?: boolean | null
+          id?: string
+          message: string
+          property_id?: string | null
+          rating?: number | null
+          status?: string | null
+          testimonial_text?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_company?: string | null
+          client_name?: string | null
+          client_photo_url?: string | null
+          client_title?: string | null
+          created_at?: string | null
+          customer_name?: string
+          featured?: boolean | null
+          id?: string
+          message?: string
+          property_id?: string | null
+          rating?: number | null
+          status?: string | null
+          testimonial_text?: string | null
+          updated_at?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "site_visit_bookings_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "testimonials_property_id_fkey"
+            columns: ["property_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -359,14 +714,24 @@ export type Database = {
     }
     Enums: {
       gallery_category:
-        | "drone_shots"
-        | "allocation_events"
-        | "construction"
-        | "other_events"
-      payment_status: "On Track" | "Behind Schedule" | "Paid in Full"
-      property_progress: "Planned" | "In Progress" | "Completed"
-      property_status: "Available" | "Reserved" | "Sold"
-      user_role: "client" | "admin"
+        | "interior"
+        | "exterior"
+        | "amenities"
+        | "location"
+        | "Drone Shots"
+        | "Allocation Events"
+        | "Construction"
+        | "Events"
+      payment_status: "On Track" | "Overdue" | "Completed" | "Paid in Full" | "Behind"
+      property_progress:
+        | "Planned"
+        | "Foundation"
+        | "Structure"
+        | "Finishing"
+        | "Completed"
+      property_status: "Available" | "Sold Out" | "Coming Soon" | "reserved" | "sold"
+      subscription_type: "monthly" | "yearly"
+      user_role: "admin" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -376,7 +741,9 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">
+]
+
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
@@ -385,22 +752,32 @@ export type Tables<
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]
+]["Tables"] &
+
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Vi
+ews"])
+
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Table
+s"] &
+
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["View
+s"])[TableName] extends {
+
       Row: infer R
     }
     ? R
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+
         DefaultSchema["Views"])
     ? (DefaultSchema["Tables"] &
         DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+
         Row: infer R
       }
       ? R
@@ -414,18 +791,24 @@ export type TablesInsert<
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]
+["Tables"]
+
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables
+"][TableName] extends {
+
       Insert: infer I
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+
         Insert: infer I
       }
       ? I
@@ -439,18 +822,24 @@ export type TablesUpdate<
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]
+["Tables"]
+
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables
+"][TableName] extends {
+
       Update: infer U
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+
         Update: infer U
       }
       ? U
@@ -464,13 +853,18 @@ export type Enums<
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]][
+"Enums"]
+
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+[EnumName]
+
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
@@ -481,29 +875,47 @@ export type CompositeTypes<
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]
+]["CompositeTypes"]
+
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["Compo
+siteTypes"][CompositeTypeName]
+
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeType
+s"]
+
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+
     : never
 
 export const Constants = {
   public: {
     Enums: {
       gallery_category: [
-        "drone_shots",
-        "allocation_events",
-        "construction",
-        "other_events",
+        "interior",
+        "exterior",
+        "amenities",
+        "location",
+        "Drone Shots",
+        "Allocation Events",
+        "Construction",
+        "Events",
       ],
-      payment_status: ["On Track", "Behind Schedule", "Paid in Full"],
-      property_progress: ["Planned", "In Progress", "Completed"],
-      property_status: ["Available", "Reserved", "Sold"],
-      user_role: ["client", "admin"],
+      payment_status: ["On Track", "Overdue", "Completed", "Paid in Full", "Behind"],
+      property_progress: [
+        "Planned",
+        "Foundation",
+        "Structure",
+        "Finishing",
+        "Completed",
+      ],
+      property_status: ["Available", "Sold Out", "Coming Soon", "reserved", "sold"],
+      subscription_type: ["monthly", "yearly"],
+      user_role: ["admin", "client"],
     },
   },
 } as const

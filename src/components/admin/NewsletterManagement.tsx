@@ -7,15 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search, Mail, Download, Trash2, User, Calendar, Filter } from 'lucide-react';
+import { TablesUpdate } from '@supabase/supabase-js';
 
 interface NewsletterSubscription {
   id: string;
   email: string;
-  name: string;
-  status: string;
-  source: string;
-  created_at: string;
-  unsubscribed_at: string;
+  name: string | null;
+  status: string | null;
+  source: string | null;
+  created_at: string | null;
+  unsubscribed_at: string | null;
 }
 
 const NewsletterManagement = () => {
@@ -57,7 +58,7 @@ const NewsletterManagement = () => {
 
   const handleStatusChange = async (subscriptionId: string, newStatus: string) => {
     try {
-      const updateData: any = { status: newStatus };
+      const updateData: TablesUpdate<'newsletter_subscriptions'> = { status: newStatus };
       if (newStatus === 'unsubscribed') {
         updateData.unsubscribed_at = new Date().toISOString();
       }
@@ -99,9 +100,9 @@ const NewsletterManagement = () => {
       ...filteredSubscriptions.map(sub => [
         sub.email,
         sub.name || '',
-        sub.status,
-        sub.source,
-        new Date(sub.created_at).toLocaleDateString(),
+        sub.status || '',
+        sub.source || '',
+        sub.created_at ? new Date(sub.created_at).toLocaleDateString() : '',
         sub.unsubscribed_at ? new Date(sub.unsubscribed_at).toLocaleDateString() : ''
       ].join(','))
     ].join('\n');
@@ -117,7 +118,7 @@ const NewsletterManagement = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     const statusConfig = {
       active: { color: 'bg-green-100 text-green-800', label: 'Active' },
       unsubscribed: { color: 'bg-red-100 text-red-800', label: 'Unsubscribed' },
@@ -128,7 +129,8 @@ const NewsletterManagement = () => {
     return <Badge className={config.color}>{config.label}</Badge>;
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',

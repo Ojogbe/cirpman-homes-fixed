@@ -53,7 +53,7 @@ const TestimonialsManagement = () => {
     featured: false,
     status: 'pending',
     client_photo_url: '',
-    property_id: ''
+    property_id: 'null-property' // Initialize with 'null-property' to avoid empty string issue
   });
 
   useEffect(() => {
@@ -115,7 +115,7 @@ const TestimonialsManagement = () => {
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value === 'null-property' ? '' : value, // Convert 'null-property' back to empty string for consistent internal state
     }));
   };
 
@@ -165,6 +165,7 @@ const TestimonialsManagement = () => {
     try {
       const testimonialData = {
         ...formData,
+        property_id: formData.property_id === '' ? null : formData.property_id, // Ensure null if no property selected
         approved_at: formData.status === 'approved' ? new Date().toISOString() : null,
         approved_by: formData.status === 'approved' ? (await supabase.auth.getUser()).data.user?.id : null
       };
@@ -191,6 +192,7 @@ const TestimonialsManagement = () => {
       fetchTestimonials();
     } catch (error: any) {
       toast.error('Failed to save testimonial: ' + error.message);
+      console.error("Error saving testimonial:", error); // Add comprehensive logging
     } finally {
       setLoading(false);
     }
@@ -207,7 +209,7 @@ const TestimonialsManagement = () => {
       featured: testimonial.featured,
       status: testimonial.status,
       client_photo_url: testimonial.client_photo_url || '',
-      property_id: testimonial.property_id || testimonial.property?.id || ''
+      property_id: testimonial.property_id || testimonial.property?.id || 'null-property' // Set to 'null-property' for no selection
     });
     setDialogOpen(true);
   };
@@ -260,7 +262,7 @@ const TestimonialsManagement = () => {
       featured: false,
       status: 'pending',
       client_photo_url: '',
-      property_id: ''
+      property_id: 'null-property' // Reset to 'null-property'
     });
     setEditingTestimonial(null);
   };
@@ -395,7 +397,7 @@ const TestimonialsManagement = () => {
                           <SelectValue placeholder="Select a property" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No specific property</SelectItem>
+                          <SelectItem value="null-property">No specific property</SelectItem>
                           {properties.map((property) => (
                             <SelectItem key={property.id} value={property.id}>
                               {property.title} - {property.location}
