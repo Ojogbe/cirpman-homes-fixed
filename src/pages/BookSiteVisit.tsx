@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,14 +22,20 @@ const BookSiteVisit = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        toast.error('You must be logged in to book a site visit.');
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('site_visit_bookings')
         .insert({
-          user_id: user?.id || null,
+          user_id: user.id,
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -40,7 +45,7 @@ const BookSiteVisit = () => {
         });
 
       if (error) throw error;
-      
+
       toast.success('Site visit request submitted successfully! We will contact you soon.');
       setFormData({
         name: '',

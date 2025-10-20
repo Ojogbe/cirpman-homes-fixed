@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Upload, Plus, Trash2, Images, X } from 'lucide-react';
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
+import { uploadToGoogleDrive } from '@/lib/googleDrive';
 
 interface GalleryItem {
   id: string;
@@ -68,26 +69,17 @@ const GalleryManagementEnhanced = () => {
   };
 
   const handleFileUpload = async (file: File) => {
-    const isVideo = file.type.startsWith('video/');
-    const fileExt = file.name.split('.').pop();
-    const fileName = `gallery/${Date.now()}-${Math.random()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from('real-estate-uploads')
-      .upload(fileName, file);
-
-    if (error) throw error;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('real-estate-uploads')
-      .getPublicUrl(fileName);
-
-    return { url: publicUrl, isVideo };
+    try {
+      const { url, isVideo } = await uploadToGoogleDrive(file);
+      return { url, isVideo };
+    } catch (error) {
+      throw new Error('Failed to upload to Google Drive: ' + error.message);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!uploadForm.title || mediaFiles.length === 0) {
       toast.error('Please fill in the title and select at least one file');
       return;
@@ -96,7 +88,7 @@ const GalleryManagementEnhanced = () => {
     setLoading(true);
 
     try {
-      // Upload all media files
+      // Upload all media files to Google Drive
       const uploadPromises = mediaFiles.map(file => handleFileUpload(file));
       const uploadResults = await Promise.all(uploadPromises);
 
