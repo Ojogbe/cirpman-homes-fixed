@@ -79,7 +79,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, setActiv
         </div>
       </aside>
 
-      {/* Main content area */}
+      {/* Main  content area */}
       <div className="flex-1 flex flex-col">
         {/* Header for smaller screens */}
         <header className="bg-white shadow md:hidden flex items-center justify-between p-4">
