@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { User, Phone, Mail } from 'lucide-react';
 import { toast } from "sonner";
 
@@ -30,21 +29,20 @@ const ProfileSettings = () => {
 
   const fetchProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
+      const response = await fetch('/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch profile');
       
-      setProfile(data);
+      const data = await response.json();
+      const profileData = data.profile || data;
+      
+      setProfile(profileData);
       setFormData({
-        full_name: data.full_name || '',
-        phone: data.phone || ''
+        full_name: profileData.full_name || '',
+        phone: profileData.phone || ''
       });
     } catch (error: any) {
       toast.error('Failed to fetch profile: ' + error.message);
@@ -58,23 +56,19 @@ const ProfileSettings = () => {
     setUpdating(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
           full_name: formData.full_name,
           phone: formData.phone
         })
-        .eq('id', user.id);
+      });
 
-      if (error) throw error;
-      
-      toast.success('Profile updated successfully');
-      fetchProfile();
-    } catch (error: any) {
-      toast.error('Failed to update profile: ' + error.message);
+      if (!response.ok) throw new Error('Failed to update profile');
     } finally {
       setUpdating(false);
     }

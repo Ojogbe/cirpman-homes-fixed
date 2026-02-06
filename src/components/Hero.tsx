@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { MapPin, Users, Calendar, CheckCircle } from 'lucide-react';
+import { MapPin, Users, Calendar, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Hero = () => {
@@ -26,7 +26,7 @@ const Hero = () => {
     { icon: Users, label: 'Plots Sold', value: '500+' },
     { icon: MapPin, label: 'Prime Locations', value: '5' },
     { icon: Calendar, label: 'Years Experience', value: '8+' },
-    { icon: CheckCircle, label: 'Happy Clients', value: '1000+' }
+    { icon: Check, label: 'Happy Clients', value: '1000+' }
   ];
 
   return (

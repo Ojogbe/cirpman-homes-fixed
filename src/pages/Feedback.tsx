@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Star, Send, MessageSquare, CheckCircle } from 'lucide-react';
+// Using text-based icons
 import { getRecaptchaToken } from '@/lib/recaptcha';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -37,15 +37,13 @@ const Feedback = () => {
 
   const fetchProperties = async () => {
     try {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('id, title, location')
-        .eq('status', 'Available');
-
-      if (error) throw error;
-      setProperties(data || []);
+      const res = await fetch('/api/properties');
+      if (!res.ok) throw new Error('Failed to fetch properties');
+      const data = await res.json();
+      setProperties(Array.isArray(data) ? data : data.properties || []);
     } catch (error: any) {
       console.error('Failed to fetch properties:', error);
+      toast.error('Failed to load properties');
     }
   };
 
@@ -76,14 +74,14 @@ const Feedback = () => {
         key={i}
         type="button"
         onClick={() => interactive && handleRatingChange(i + 1)}
-        className={`h-6 w-6 transition-colors ${
+        className={`text-xl transition-colors ${
           i < rating 
-            ? 'text-yellow-400 fill-current' 
+            ? 'text-yellow-400' 
             : 'text-gray-300 hover:text-yellow-300'
         } ${interactive ? 'cursor-pointer' : ''}`}
         disabled={!interactive}
       >
-        <Star className="h-full w-full" />
+        ★
       </button>
     ));
   };
@@ -93,25 +91,19 @@ const Feedback = () => {
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
       const feedbackData = {
         ...formData,
         property_id: formData.property_id ? formData.property_id : null,
-        user_id: user?.id || null,
         status: 'unread'
       };
 
-      const recaptchaToken = await getRecaptchaToken('feedback_submit');
-      const { data, error } = await supabase.functions.invoke('verify_captcha_and_submit', {
-        body: {
-          action: 'feedback',
-          payload: feedbackData,
-          recaptchaToken
-        }
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedbackData)
       });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error('Failed to submit feedback');
 
       toast.success('Feedback submitted successfully! We will review and respond soon.');
       setSubmitted(true);
@@ -163,7 +155,7 @@ const Feedback = () => {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Card className="text-center">
             <CardContent className="p-8">
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <span className="text-6xl text-green-500 mx-auto mb-4">✓</span>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Thank You for Your Feedback!
               </h2>
@@ -208,7 +200,7 @@ const Feedback = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <MessageSquare className="h-5 w-5" />
+              <span className="text-lg">✉️</span>
               <span>Share Your Feedback</span>
             </CardTitle>
             <CardDescription>
@@ -305,14 +297,7 @@ const Feedback = () => {
                 className="w-full bg-brand-gold hover:bg-brand-gold/90 text-brand-blue"
                 disabled={loading}
               >
-                {loading ? (
-                  'Submitting...'
-                ) : (
-                  <>
-                    <Send className="h-4 w-4 mr-2" />
-                    Submit Feedback
-                  </>
-                )}
+                {loading ? <Skeleton className="h-5 w-32 mx-auto" /> : <>📨 Submit Feedback</>}
               </Button>
             </form>
           </CardContent>

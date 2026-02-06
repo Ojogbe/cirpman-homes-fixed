@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../integrations/supabase/client';
-import { Tables, TablesInsert, TablesUpdate } from '../../integrations/supabase/types';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +13,17 @@ import {
 } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type PaymentLink = Tables<'payment_links'>;
+interface PaymentLink {
+  id: string;
+  section_name: string;
+  link_url: string;
+  created_at?: string | null;
+}
+
+interface PaymentLinkFormData {
+  section_name: string;
+  link_url: string;
+}
 
 const SECTIONS_WITH_PAYMENT_LINKS = [
   'Customer Subscription',
@@ -27,7 +35,7 @@ const PaymentLinkManagement: React.FC = () => {
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingLink, setEditingLink] = useState<PaymentLink | null>(null);
-  const [formData, setFormData] = useState<TablesInsert<'payment_links'>>({
+  const [formData, setFormData] = useState<PaymentLinkFormData>({
     section_name: '',
     link_url: '',
   });
@@ -37,14 +45,19 @@ const PaymentLinkManagement: React.FC = () => {
   }, []);
 
   const fetchPaymentLinks = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('payment_links').select('*');
-    if (error) {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/payment-links');
+      if (!response.ok) {
+        throw new Error('Failed to fetch payment links');
+      }
+      const data = await response.json();
+      setPaymentLinks(Array.isArray(data) ? data : []);
+    } catch (error: any) {
       toast.error('Error fetching payment links: ' + error.message);
-    } else {
-      setPaymentLinks(data);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,31 +70,51 @@ const PaymentLinkManagement: React.FC = () => {
 
     if (editingLink) {
       // Update existing link
-      const updateData: TablesUpdate<'payment_links'> = {
-        section_name: formData.section_name,
-        link_url: formData.link_url,
-      };
-      const { error } = await supabase
-        .from('payment_links')
-        .update(updateData)
-        .eq('id', editingLink.id);
-      if (error) {
-        toast.error('Error updating payment link: ' + error.message);
-      } else {
+      try {
+        const response = await fetch(`/api/payment-links/${editingLink.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            section_name: formData.section_name,
+            link_url: formData.link_url,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to update payment link');
+        }
+
         toast.success('Payment link updated successfully!');
         setEditingLink(null);
-        setFormData({ section_name: '', link_url: '', });
+        setFormData({ section_name: '', link_url: '' });
         fetchPaymentLinks();
+      } catch (error: any) {
+        toast.error('Error updating payment link: ' + error.message);
       }
     } else {
       // Add new link
-      const { error } = await supabase.from('payment_links').insert(formData);
-      if (error) {
-        toast.error('Error adding payment link: ' + error.message);
-      } else {
+      try {
+        const response = await fetch('/api/payment-links', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to add payment link');
+        }
+
         toast.success('Payment link added successfully!');
-        setFormData({ section_name: '', link_url: '', });
+        setFormData({ section_name: '', link_url: '' });
         fetchPaymentLinks();
+      } catch (error: any) {
+        toast.error('Error adding payment link: ' + error.message);
       }
     }
     setLoading(false);
@@ -100,14 +133,23 @@ const PaymentLinkManagement: React.FC = () => {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.from('payment_links').delete().eq('id', id);
-    if (error) {
-      toast.error('Error deleting payment link: ' + error.message);
-    } else {
+    try {
+      const response = await fetch(`/api/payment-links/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete payment link');
+      }
+
       toast.success('Payment link deleted successfully!');
       fetchPaymentLinks();
+    } catch (error: any) {
+      toast.error('Error deleting payment link: ' + error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

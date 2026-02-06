@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Mail, CheckCircle } from 'lucide-react';
-import { getRecaptchaToken } from "@/lib/recaptcha";
+import { Mail, Check } from 'lucide-react';
 
 interface NewsletterSubscriptionProps {
   variant?: 'inline' | 'card';
@@ -41,24 +39,22 @@ const NewsletterSubscription = ({
     setLoading(true);
 
     try {
-      const recaptchaToken = await getRecaptchaToken('newsletter_subscribe');
-      const { data, error } = await supabase.functions.invoke('verify_captcha_and_submit', {
-        body: {
-          action: 'newsletter',
-          payload: {
-            email: email.trim(),
-            name: name.trim() || null,
-            source: 'website_subscription'
-          },
-          recaptchaToken
-        }
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim() || null,
+          source: 'website_subscription'
+        })
       });
 
-      if (error) {
-        if (error.code === '23505') { // Unique constraint violation
+      if (!res.ok) {
+        const error = await res.json();
+        if (res.status === 409) {
           toast.error('This email is already subscribed to our newsletter');
         } else {
-          throw error;
+          throw new Error(error.message || 'Failed to subscribe');
         }
       } else {
         toast.success('Successfully subscribed to our newsletter!');
@@ -76,7 +72,7 @@ const NewsletterSubscription = ({
   if (subscribed) {
     return (
       <div className={`bg-green-50 border border-green-200 rounded-lg p-6 text-center ${className}`}>
-        <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+        <span className="text-4xl text-green-500 mx-auto mb-2 block">✓</span>
         <h3 className="text-lg font-semibold text-green-800 mb-1">Thank You!</h3>
         <p className="text-green-700">You've been successfully subscribed to our newsletter.</p>
         <Button 

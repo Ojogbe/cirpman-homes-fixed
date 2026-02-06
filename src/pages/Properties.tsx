@@ -3,7 +3,6 @@ import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
 import { MapPin, Bed, Bath, Square, Search, Filter } from 'lucide-react';
 import { toast } from "sonner";
 
@@ -36,13 +35,10 @@ const Properties = () => {
 
   const fetchProperties = async () => {
     try {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProperties(data || []);
+      const response = await fetch('/api/properties');
+      if (!response.ok) throw new Error('Failed to fetch properties');
+      const data = await response.json();
+      setProperties(data.properties || data || []);
     } catch (error: any) {
       toast.error('Failed to fetch properties: ' + error.message);
     } finally {

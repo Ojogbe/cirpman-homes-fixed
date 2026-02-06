@@ -5,13 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, User, Calendar, MapPin, CreditCard, FileText, Signature, Download, CreditCard as CreditCardIcon } from 'lucide-react';
+import { Upload, Calendar, MapPin, CreditCard as CreditCardIcon, User, Signature, Download } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { generateCustomerSubscriptionPDF, downloadPDF } from '@/lib/pdfGenerator';
-import { getRecaptchaToken } from '@/lib/recaptcha';
 
 const CustomerSubscription = () => {
   const [loading, setLoading] = useState(false);
@@ -69,13 +67,10 @@ const CustomerSubscription = () => {
 
   const fetchProperties = async () => {
     try {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('status', 'Available');
-      
-      if (error) throw error;
-      setProperties(data || []);
+      const res = await fetch('/api/properties');
+      if (!res.ok) throw new Error('Failed to fetch properties');
+      const data = await res.json();
+      setProperties(Array.isArray(data) ? data : data.properties || []);
     } catch (error: any) {
       toast.error('Failed to fetch properties: ' + error.message);
     }
@@ -83,18 +78,13 @@ const CustomerSubscription = () => {
 
   const fetchPaymentLink = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payment_links')
-        .select('link_url')
-        .eq('section_name', 'Customer Subscription') // Assuming a section_name for customer subscriptions
-        .single();
-
-      if (error) throw error;
-      if (data) {
+      const res = await fetch('/api/payment-links?section=customer-subscription');
+      if (!res.ok) throw new Error('Failed to fetch payment link');
+      const data = await res.json();
+      if (data && data.link_url) {
         setCustomerSubscriptionPaymentLink(data.link_url);
       }
     } catch (error: any) {
-      toast.error('Failed to fetch customer subscription payment link: ' + error.message);
       console.error('Error fetching payment link:', error);
     }
   };
@@ -133,22 +123,41 @@ const CustomerSubscription = () => {
       if (type === 'passportPhoto') {
         setLoading(true);
         try {
-          const fileName = `passport-photos/${Date.now()}-${file.name}`;
-          const { error: uploadError } = await supabase.storage
-            .from('real-estate-uploads')
-            .upload(fileName, file);
-          
-          if (uploadError) throw uploadError;
-          
-          const { data: { publicUrl } } = supabase.storage
-            .from('real-estate-uploads')
-            .getPublicUrl(fileName);
-          
-          setFormData(prev => ({ ...prev, passportPhoto: file, passportPhotoUrl: publicUrl }));
-          toast.success('Passport photo uploaded successfully!');
+          // Convert file to base64
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const base64Content = event.target?.result?.toString().split(',')[1];
+            
+            if (!base64Content) {
+              toast.error('Failed to read file');
+              return;
+            }
+
+            try {
+              const res = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  fileName: `passport-${Date.now()}-${file.name}`,
+                  fileContent: base64Content,
+                  contentType: file.type
+                })
+              });
+              
+              if (!res.ok) throw new Error('Failed to upload file');
+              const { url } = await res.json();
+              
+              setFormData(prev => ({ ...prev, passportPhoto: file, passportPhotoUrl: url }));
+              toast.success('Passport photo uploaded successfully!');
+            } catch (error: any) {
+              toast.error('Failed to upload passport photo: ' + error.message);
+            } finally {
+              setLoading(false);
+            }
+          };
+          reader.readAsDataURL(file);
         } catch (error: any) {
           toast.error('Failed to upload passport photo: ' + error.message);
-        } finally {
           setLoading(false);
         }
       }
@@ -205,7 +214,6 @@ const CustomerSubscription = () => {
       //   passportPhotoUrl = publicUrl;
       // }
 
-      // Save subscription data
       const subscriptionData = {
         ...formData,
         passport_photo_url: formData.passportPhotoUrl,
@@ -214,15 +222,13 @@ const CustomerSubscription = () => {
         created_at: new Date().toISOString()
       };
 
-      const recaptchaToken = await getRecaptchaToken('customer_subscription_submit');
-      const { data, error } = await supabase.functions.invoke('verify_captcha_and_submit', {
-        body: {
-          action: 'customer_subscription',
-          payload: subscriptionData,
-          recaptchaToken
-        }
+      const res = await fetch('/api/customer-subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscriptionData)
       });
-      if (error) throw error;
+      
+      if (!res.ok) throw new Error('Failed to submit subscription');
 
       toast.success('Subscription submitted successfully! We will contact you soon.');
       

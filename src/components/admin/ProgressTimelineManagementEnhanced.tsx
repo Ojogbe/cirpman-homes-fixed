@@ -5,10 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Calendar, Upload, X } from 'lucide-react';
 import { toast } from "sonner";
-import { useRealtime } from "@/hooks/useRealtime";
+import axios from 'axios';
 
 interface ProgressTimelineItem {
   id: string;
@@ -35,32 +34,20 @@ const ProgressTimelineManagementEnhanced = () => {
     fetchTimelineItems();
   }, []);
 
-  // Real-time updates
-  useRealtime({
-    table: 'progress_timeline',
-    onInsert: (payload) => {
-      const newItem = payload.new as ProgressTimelineItem;
-      setTimelineItems(prev => [newItem, ...prev.sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      )]);
-      toast.success('New progress update added!');
-    },
-    onDelete: (payload) => {
-      const deletedId = payload.old.id;
-      setTimelineItems(prev => prev.filter(item => item.id !== deletedId));
-      toast.success('Progress update deleted!');
-    }
-  });
+  // Optional: basic polling to keep timeline reasonably fresh
+  useEffect(() => {
+    const interval = setInterval(fetchTimelineItems, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchTimelineItems = async () => {
     try {
-      const { data, error } = await supabase
-        .from('progress_timeline')
-        .select('*')
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      setTimelineItems(data || []);
+      const response = await fetch('/api/progress-timeline');
+      if (!response.ok) {
+        throw new Error('Failed to fetch progress timeline');
+      }
+      const data = await response.json();
+      setTimelineItems(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error('Failed to fetch progress timeline: ' + error.message);
     } finally {
@@ -70,20 +57,29 @@ const ProgressTimelineManagementEnhanced = () => {
 
   const handleFileUpload = async (file: File) => {
     const isVideo = file.type.startsWith('video/');
-    const fileExt = file.name.split('.').pop();
-    const fileName = `progress/${Date.now()}-${Math.random()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from('real-estate-uploads')
-      .upload(fileName, file);
+    const path = isVideo ? 'progress-timeline/videos' : 'progress-timeline/images';
 
-    if (error) throw error;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('real-estate-uploads')
-      .getPublicUrl(fileName);
+    try {
+      const response = await axios.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
-    return { url: publicUrl, isVideo };
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      return { url: response.data.url as string, isVideo };
+    } catch (error: any) {
+      console.error('Error uploading progress media:', error);
+      toast.error('Failed to upload media. Please try again.');
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,17 +109,24 @@ const ProgressTimelineManagementEnhanced = () => {
         videoUrl = firstVideo?.url || null;
       }
 
-      const { error } = await supabase
-        .from('progress_timeline')
-        .insert([{
+      const response = await fetch('/api/progress-timeline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           title: formData.title,
           description: formData.description || null,
           date: formData.date,
           image_url: imageUrl,
-          video_url: videoUrl
-        }]);
+          video_url: videoUrl,
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to add progress update');
+      }
 
       toast.success('Progress update added successfully!');
       setShowAddForm(false);
@@ -139,12 +142,18 @@ const ProgressTimelineManagementEnhanced = () => {
 
   const deleteTimelineItem = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('progress_timeline')
-        .delete()
-        .eq('id', id);
+      const response = await fetch(`/api/progress-timeline/${id}`, {
+        method: 'DELETE',
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete item');
+      }
+
+      // Optimistically update local state
+      setTimelineItems(prev => prev.filter(item => item.id !== id));
+      toast.success('Progress update deleted!');
     } catch (error: any) {
       toast.error('Failed to delete item: ' + error.message);
     }

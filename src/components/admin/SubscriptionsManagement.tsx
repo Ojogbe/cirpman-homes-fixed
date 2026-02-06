@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search, Download, Eye, Mail, Filter, Users, UserCheck } from 'lucide-react';
 import { generateCustomerSubscriptionPDF, generateConsultantSubscriptionPDF, downloadPDF } from '@/lib/pdfGenerator';

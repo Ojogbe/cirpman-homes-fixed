@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card, CardContent } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { Image, Video, Filter } from 'lucide-react';
 import { toast } from "sonner";
 
@@ -29,13 +28,10 @@ const Gallery = () => {
 
   const fetchGalleryItems = async () => {
     try {
-      const { data, error } = await supabase
-        .from('gallery')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setGalleryItems(data || []);
+      const response = await fetch('/api/gallery');
+      if (!response.ok) throw new Error('Failed to fetch gallery items');
+      const data = await response.json();
+      setGalleryItems(data.gallery || data || []);
     } catch (error: any) {
       toast.error('Failed to fetch gallery items: ' + error.message);
     } finally {

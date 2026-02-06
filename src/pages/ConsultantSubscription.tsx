@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
+// Supabase import removed
 import { toast } from "sonner";
 import { Upload, User, Building, CreditCard, Signature, Download, CreditCard as CreditCardIcon } from 'lucide-react';
 import Navigation from '@/components/Navigation';
@@ -60,15 +61,12 @@ const ConsultantSubscription = () => {
 
   const fetchPaymentLink = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payment_links')
-        .select('link_url')
-        .eq('section_name', 'Consultant Application') // Assuming a section_name for consultant applications
-        .single();
-
-      if (error) throw error;
-      if (data) {
-        setConsultantSubscriptionPaymentLink(data.link_url);
+      const response = await fetch('/api/payment-links?section=Consultant%20Application');
+      if (!response.ok) throw new Error('Failed to fetch payment link');
+      const data = await response.json();
+      const paymentLink = data.paymentLinks?.[0]?.link_url || data.link_url;
+      if (paymentLink) {
+        setConsultantSubscriptionPaymentLink(paymentLink);
       }
     } catch (error: any) {
       toast.error('Failed to fetch consultant application payment link: ' + error.message);
@@ -106,26 +104,22 @@ const ConsultantSubscription = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      // Upload passport photo
       let passportPhotoUrl = '';
       if (formData.passportPhoto) {
-        const fileName = `consultant-photos/${Date.now()}-${formData.passportPhoto.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('real-estate-uploads')
-          .upload(fileName, formData.passportPhoto);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('real-estate-uploads')
-          .getPublicUrl(fileName);
-        
-        passportPhotoUrl = publicUrl;
+        // Upload passport photo to Cloudflare R2
+        const photoForm = new FormData();
+        photoForm.append('file', formData.passportPhoto);
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: photoForm
+        });
+        if (!uploadRes.ok) throw new Error('Failed to upload passport photo');
+        const uploadData = await uploadRes.json();
+        passportPhotoUrl = uploadData.url;
       }
 
-      // Save subscription data
+      // Prepare subscription data
       const subscriptionData = {
         ...formData,
         passport_photo_url: passportPhotoUrl,
@@ -133,18 +127,16 @@ const ConsultantSubscription = () => {
         created_at: new Date().toISOString()
       };
 
-      const recaptchaToken = await getRecaptchaToken('consultant_subscription_submit');
-      const { data, error } = await supabase.functions.invoke('verify_captcha_and_submit', {
-        body: {
-          action: 'consultant_subscription',
-          payload: subscriptionData,
-          recaptchaToken
-        }
+      // Submit consultant subscription
+      const res = await fetch('/api/consultants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscriptionData)
       });
-      if (error) throw error;
+      if (!res.ok) throw new Error('Failed to submit consultant subscription');
 
       toast.success('Consultant application submitted successfully! We will contact you soon.');
-      
+
       // Generate and download PDF
       try {
         const pdfBytes = await generateConsultantSubscriptionPDF({
@@ -157,7 +149,7 @@ const ConsultantSubscription = () => {
         console.error('PDF generation failed:', pdfError);
         toast.error('PDF generation failed, but application was saved.');
       }
-      
+
       // Reset form
       setFormData({
         firstName: '',
@@ -187,7 +179,6 @@ const ConsultantSubscription = () => {
         date: new Date().toISOString().split('T')[0],
         passportPhoto: null,
       });
-
     } catch (error: any) {
       toast.error('Failed to submit application: ' + error.message);
     } finally {
@@ -636,13 +627,13 @@ const ConsultantSubscription = () => {
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download PDF
-                </Button>
                 <Button 
-                  type="button"
-                  onClick={handlePayNow}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  disabled={!formData.firstName || !formData.lastName || !formData.email}
+                  type="submit" 
+                  className="w-full bg-brand-gold hover:bg-brand-gold/90 text-brand-blue"
+                  disabled={loading}
                 >
+                  {loading ? <Skeleton className="h-5 w-32 mx-auto" /> : 'Submit Application'}
+                </Button>
                   <CreditCardIcon className="h-4 w-4 mr-2" />
                   Pay Application Fee
                 </Button>

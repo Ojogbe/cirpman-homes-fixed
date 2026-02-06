@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Clock, MapPin } from 'lucide-react';
 import { toast } from "sonner";
 
@@ -22,30 +22,13 @@ const BookSiteVisit = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        toast.error('You must be logged in to book a site visit.');
-        setLoading(false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from('site_visit_bookings')
-        .insert({
-          user_id: user.id,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          preferred_date: formData.preferred_date,
-          preferred_time: formData.preferred_time,
-          message: formData.message
-        });
-
-      if (error) throw error;
-
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (!res.ok) throw new Error('Failed to submit booking');
       toast.success('Site visit request submitted successfully! We will contact you soon.');
       setFormData({
         name: '',
@@ -187,13 +170,13 @@ const BookSiteVisit = () => {
                   />
                 </div>
                 
-                <Button 
-                  type="submit" 
-                  className="w-full bg-brand-gold hover:bg-brand-gold/90 text-brand-blue"
-                  disabled={loading}
-                >
-                  {loading ? 'Submitting...' : 'Book Site Visit'}
-                </Button>
+                 <Button 
+                   type="submit" 
+                   className="w-full bg-brand-gold hover:bg-brand-gold/90 text-brand-blue"
+                   disabled={loading}
+                 >
+                   {loading ? <Skeleton className="h-5 w-32 mx-auto" /> : 'Book Site Visit'}
+                 </Button>
               </form>
             </CardContent>
           </Card>

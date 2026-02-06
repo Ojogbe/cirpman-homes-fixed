@@ -25,36 +25,38 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/properties" element={<Properties />} />
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/book-site-visit" element={<BookSiteVisit />} />
-                     <Route path="/customer-subscription" element={<CustomerSubscription />} />
-           <Route path="/consultant-subscription" element={<ConsultantSubscription />} />
-           <Route path="/blog" element={<Blog />} />
-           <Route path="/blog/:slug" element={<BlogPost />} />
-           <Route path="/testimonials" element={<Testimonials />} />
-           <Route path="/faq" element={<FAQ />} />
-           <Route path="/feedback" element={<Feedback />} />
-           <Route path="/dashboard/admin" element={<AdminDashboard />} />
-           <Route path="/dashboard/client" element={<ClientDashboard />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/properties" element={<Properties />} />
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/gallery" element={<Gallery />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/book-site-visit" element={<BookSiteVisit />} />
+                       <Route path="/customer-subscription" element={<CustomerSubscription />} />
+             <Route path="/consultant-subscription" element={<ConsultantSubscription />} />
+             <Route path="/blog" element={<Blog />} />
+             <Route path="/blog/:slug" element={<BlogPost />} />
+             <Route path="/testimonials" element={<Testimonials />} />
+             <Route path="/faq" element={<FAQ />} />
+             <Route path="/feedback" element={<Feedback />} />
+             <Route path="/dashboard/admin" element={<AdminDashboard />} />
+             <Route path="/dashboard/client" element={<ClientDashboard />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, TrendingUp, Shield, Building } from 'lucide-react';
+import { MapPin, TrendingUp, Shield, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const WhyInvest = () => {
@@ -25,7 +25,7 @@ const WhyInvest = () => {
       color: 'text-brand-gold'
     },
     {
-      icon: Building,
+      icon: Building2,
       title: 'World-Class Amenities',
       description: 'Modern infrastructure, 24/7 security, recreational facilities, and premium finishing.',
       color: 'text-purple-600'

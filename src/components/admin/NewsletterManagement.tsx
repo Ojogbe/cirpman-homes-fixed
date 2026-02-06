@@ -3,25 +3,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search, Mail, Download, Trash2, User, Calendar, Filter } from 'lucide-react';
-import { TablesUpdate } from '@supabase/supabase-js';
 
 interface NewsletterSubscription {
   id: string;
   email: string;
-  name: string | null;
-  status: string | null;
-  source: string | null;
-  created_at: string | null;
-  unsubscribed_at: string | null;
+  name?: string;
+  status?: string;
+  source?: string;
+  created_at?: string;
+  unsubscribed_at?: string;
 }
 
 const NewsletterManagement = () => {
   const [subscriptions, setSubscriptions] = useState<NewsletterSubscription[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
@@ -31,73 +30,60 @@ const NewsletterManagement = () => {
   }, []);
 
   const fetchSubscriptions = async () => {
-    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('newsletter_subscriptions')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setSubscriptions(data || []);
-    } catch (error: any) {
-      toast.error('Failed to fetch newsletter subscriptions: ' + error.message);
+      const res = await fetch('/api/newsletter');
+      if (!res.ok) throw new Error('Failed to fetch subscriptions');
+      const data = await res.json();
+      setSubscriptions(Array.isArray(data) ? data : data.subscriptions || []);
+    } catch (error) {
+      console.error('Failed to fetch subscriptions:', error);
+      toast.error('Failed to load subscriptions');
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredSubscriptions = subscriptions.filter(subscription => {
-    const matchesSearch = 
-      subscription.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subscription.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || subscription.status === statusFilter;
-    const matchesSource = sourceFilter === 'all' || subscription.source === sourceFilter;
+  const filteredSubscriptions = subscriptions.filter((sub) => {
+    const matchesSearch = sub.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (sub.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
+    const matchesSource = sourceFilter === 'all' || sub.source === sourceFilter;
     return matchesSearch && matchesStatus && matchesSource;
   });
 
-  const handleStatusChange = async (subscriptionId: string, newStatus: string) => {
+  const handleStatusChange = async (id: string, status: string) => {
     try {
-      const updateData: TablesUpdate<'newsletter_subscriptions'> = { status: newStatus };
-      if (newStatus === 'unsubscribed') {
-        updateData.unsubscribed_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase
-        .from('newsletter_subscriptions')
-        .update(updateData)
-        .eq('id', subscriptionId);
-
-      if (error) throw error;
-      toast.success('Subscription status updated successfully!');
-      fetchSubscriptions();
-    } catch (error: any) {
-      toast.error('Failed to update status: ' + error.message);
+      const res = await fetch(`/api/newsletter/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+      setSubscriptions(subscriptions.map(s => s.id === id ? { ...s, status } : s));
+      toast.success('Status updated successfully');
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      toast.error('Failed to update status');
     }
   };
 
-  const handleDelete = async (subscriptionId: string) => {
-    if (window.confirm('Are you sure you want to delete this subscription?')) {
-      try {
-        const { error } = await supabase
-          .from('newsletter_subscriptions')
-          .delete()
-          .eq('id', subscriptionId);
-
-        if (error) throw error;
-        toast.success('Subscription deleted successfully!');
-        fetchSubscriptions();
-      } catch (error: any) {
-        toast.error('Failed to delete subscription: ' + error.message);
-      }
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this subscription?')) return;
+    try {
+      const res = await fetch(`/api/newsletter/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete subscription');
+      setSubscriptions(subscriptions.filter(s => s.id !== id));
+      toast.success('Subscription deleted');
+    } catch (error) {
+      console.error('Failed to delete subscription:', error);
+      toast.error('Failed to delete subscription');
     }
   };
 
   const exportToCSV = () => {
-    const headers = ['Email', 'Name', 'Status', 'Source', 'Created At', 'Unsubscribed At'];
     const csvContent = [
-      headers.join(','),
-      ...filteredSubscriptions.map(sub => [
+      ['Email', 'Name', 'Status', 'Source', 'Joined', 'Unsubscribed'].join(','),
+      ...subscriptions.map(sub => [
         sub.email,
         sub.name || '',
         sub.status || '',
@@ -111,7 +97,7 @@ const NewsletterManagement = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `newsletter-subscriptions-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = 'newsletter-subscribers.csv';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

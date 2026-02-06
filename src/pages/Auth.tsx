@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
+import { useAuth } from '@/hooks/useAuth';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -17,98 +17,50 @@ const Auth = () => {
     phone: ''
   });
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Redirect to home page if already logged in
-        navigate('/');
-      }
-    };
-    checkUser();
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      navigate('/');
+    }
   }, [navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-            phone: formData.phone
-          },
-          emailRedirectTo: `${window.location.origin}/`
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        toast.success('Account created successfully! Please check your email to verify your account.');
-      }
+      await signUp(formData.email, formData.password, formData.fullName, formData.phone);
+      toast.success('Account created successfully!');
+      navigate('/');
     } catch (error: any) {
-      toast.error(error.message || 'An error occurred during signup');
+      toast.error(error.message || 'Sign up failed');
     } finally {
       setLoading(false);
     }
-  };
-
-  const cleanupAuthState = () => {
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      // Clean up any existing auth state
-      cleanupAuthState();
-      
-      // Attempt global sign out first
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        // Continue even if this fails
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        toast.success('Signed in successfully!');
-        window.location.href = '/';
-      }
+      await signIn(formData.email, formData.password);
+      toast.success('Signed in successfully!');
+      navigate('/');
     } catch (error: any) {
-      toast.error(error.message || 'An error occurred during signin');
+      toast.error(error.message || 'Sign in failed');
     } finally {
       setLoading(false);
     }
   };
-
-  console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-  console.log('Supabase Key:', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -177,7 +129,6 @@ const Auth = () => {
                   </div>
                 </>
               )}
-              
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input

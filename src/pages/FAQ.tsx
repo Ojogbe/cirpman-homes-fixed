@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search, ChevronDown, ChevronRight, HelpCircle, Filter } from 'lucide-react';
 import Navigation from '@/components/Navigation';
@@ -35,18 +34,14 @@ const FAQ = () => {
   const fetchFAQs = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('faq')
-        .select('*')
-        .eq('is_active', true)
-        .order('order_index', { ascending: true })
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setFaqs(data || []);
+      const response = await fetch('/api/faq');
+      if (!response.ok) throw new Error('Failed to fetch FAQ');
+      const data = await response.json();
+      const faqItems = data.faq || data || [];
+      setFaqs(faqItems);
 
       // Extract unique categories
-      const uniqueCategories = [...new Set(data?.map(faq => faq.category) || [])];
+      const uniqueCategories = [...new Set(faqItems.map((faq: any) => faq.category) || [])];
       setCategories(uniqueCategories);
     } catch (error: any) {
       toast.error('Failed to fetch FAQ: ' + error.message);

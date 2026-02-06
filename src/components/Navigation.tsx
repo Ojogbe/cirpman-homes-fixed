@@ -4,66 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Phone, ChevronDown, User, LogOut } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
   const [userRole, setUserRole] = useState<string>('client');
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer async operations to prevent deadlocks
-        if (session?.user) {
-          setTimeout(() => {
-            supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', session.user.id)
-              .single()
-              .then(({ data: profile }) => {
-                if (profile) {
-                  setUserRole(profile.role);
-                }
-              });
-          }, 0);
-        } else {
-          setUserRole('client');
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data: profile }) => {
-            if (profile) {
-              setUserRole(profile.role);
-            }
-          });
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    // Check for existing JWT token from REST API auth
+    const token = localStorage.getItem('auth_token');
+    const userEmail = localStorage.getItem('user_email');
+    const role = localStorage.getItem('user_role');
+    
+    if (token && userEmail) {
+      setUser({ email: userEmail, role: role || 'client' });
+      setUserRole(role || 'client');
+    }
   }, []);
 
   const navItems = [
@@ -86,36 +46,19 @@ const Navigation = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const cleanupAuthState = () => {
-    // Clear auth state
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-  };
-
-  const handleSignOut = async () => {
-    try {
-      // Clean up auth state first
-      cleanupAuthState();
-      
-      // Sign out with global scope
-      await supabase.auth.signOut({ scope: 'global' });
-      
-      // Reset component state
-      setUser(null);
-      setSession(null);
-      setUserRole('client');
-      setIsDashboardOpen(false);
-      
-      // Force page reload for clean state
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Error signing out:', error);
-      // Force reload even if sign out fails
-      window.location.href = '/';
-    }
+  const handleSignOut = () => {
+    // Clear JWT auth tokens
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('user_role');
+    
+    // Reset component state
+    setUser(null);
+    setUserRole('client');
+    setIsDashboardOpen(false);
+    
+    // Navigate home
+    navigate('/');
   };
 
   const getDashboardPath = () => {

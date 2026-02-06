@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { Building, MapPin, TrendingUp } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/hooks/useAuth';
@@ -58,14 +57,10 @@ const PropertySelection = () => {
 
   const fetchProperties = async () => {
     try {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('status', 'Available')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProperties(data || []);
+      const response = await fetch('/api/properties?status=Available');
+      if (!response.ok) throw new Error('Failed to fetch properties');
+      const data = await response.json();
+      setProperties(data.properties || data || []);
     } catch (error: any) {
       toast.error('Failed to fetch properties: ' + error.message);
     } finally {
@@ -81,36 +76,30 @@ const PropertySelection = () => {
 
     setBookingProperty(property.id);
     try {
-      // Create property booking
-      const { data: booking, error: bookingError } = await supabase
-        .from('property_bookings')
-        .insert({
-          user_id: user.id,
-          property_id: property.id,
-          total_price: selectedPrice
-        })
-        .select()
-        .single();
-
-      if (bookingError) throw bookingError;
-
-      // Create installment plan (12 months default)
+      // Create property booking with installment plan
+      const userId = localStorage.getItem('user_id');
+      const userEmail = localStorage.getItem('user_email');
+      
       const monthlyAmount = Math.ceil(selectedPrice / 12);
       const nextPaymentDate = new Date();
       nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
 
-      const { error: installmentError } = await supabase
-        .from('installment_plans')
-        .insert({
-          booking_id: booking.id,
-          total_amount: selectedPrice,
-          total_paid: 0,
-          next_payment_date: nextPaymentDate.toISOString().split('T')[0],
-          next_payment_amount: monthlyAmount,
-          status: 'On Track'
-        });
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          action: 'book_property',
+          property_id: property.id,
+          total_price: selectedPrice,
+          monthly_amount: monthlyAmount,
+          next_payment_date: nextPaymentDate.toISOString().split('T')[0]
+        })
+      });
 
-      if (installmentError) throw installmentError;
+      if (!response.ok) throw new Error('Failed to book property');
 
       toast.success('Property booked successfully! Check your dashboard for payment details.');
     } catch (error: any) {
@@ -125,13 +114,21 @@ const PropertySelection = () => {
     if (!bookingModalProperty) return;
     setBookingLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = localStorage.getItem('user_email');
+      const userId = localStorage.getItem('user_id');
       const recaptchaToken = await getRecaptchaToken('site_visit_submit');
-      const { data, error } = await supabase.functions.invoke('verify_captcha_and_submit', {
-        body: {
+      
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
           action: 'site_visit',
           payload: {
-            user_id: user?.id || null,
+            user_id: userId || null,
+            user_email: userEmail,
             property_id: bookingModalProperty.id,
             name: bookingForm.name,
             email: bookingForm.email,
@@ -141,9 +138,10 @@ const PropertySelection = () => {
             message: bookingForm.message,
           },
           recaptchaToken
-        }
+        })
       });
-      if (error) throw error;
+      
+      if (!response.ok) throw new Error('Failed to submit request');
       toast.success('Site visit request submitted successfully!');
       setBookingModalProperty(null);
       setBookingForm({ name: '', email: '', phone: '', preferred_date: '', preferred_time: '', message: '' });

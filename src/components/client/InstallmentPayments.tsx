@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Calendar, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { CreditCard, Calendar, Check, Clock, AlertCircle } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/hooks/useAuth';
 
@@ -44,20 +43,14 @@ const InstallmentPayments = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('installment_plans')
-        .select(`
-          *,
-          property_bookings!inner (
-            properties (title, location)
-          ),
-          payment_history (*)
-        `)
-        .eq('property_bookings.user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setInstallmentPlans(data || []);
+      const response = await fetch('/api/installment-plans', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch installment plans');
+      const data = await response.json();
+      setInstallmentPlans(data.plans || data || []);
     } catch (error: any) {
       toast.error('Failed to fetch installment plans: ' + error.message);
     } finally {
@@ -70,42 +63,20 @@ const InstallmentPayments = () => {
 
     setPaymentProcessing(installmentPlanId);
     try {
-      // For demo purposes, we'll simulate a payment
-      // In a real app, you'd integrate with a payment gateway
-      
-      // Add payment to history
-      const { error: paymentError } = await supabase
-        .from('payment_history')
-        .insert({
-          installment_plan_id: installmentPlanId,
+      const response = await fetch(`/api/installment-plans/${installmentPlanId}/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
           amount: amount,
           payment_date: new Date().toISOString().split('T')[0],
           notes: 'Manual payment via dashboard'
-        });
+        })
+      });
 
-      if (paymentError) throw paymentError;
-
-      // Update installment plan
-      const plan = installmentPlans.find(p => p.id === installmentPlanId);
-      if (plan) {
-        const newTotalPaid = plan.total_paid + amount;
-        const isCompleted = newTotalPaid >= plan.total_amount;
-        
-        // Calculate next payment date (30 days from now)
-        const nextPaymentDate = new Date();
-        nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
-
-        const { error: updateError } = await supabase
-          .from('installment_plans')
-          .update({
-            total_paid: newTotalPaid,
-            next_payment_date: isCompleted ? null : nextPaymentDate.toISOString().split('T')[0],
-            status: isCompleted ? 'Paid in Full' : 'On Track'
-          })
-          .eq('id', installmentPlanId);
-
-        if (updateError) throw updateError;
-      }
+      if (!response.ok) throw new Error('Failed to process payment');
 
       toast.success('Payment processed successfully!');
       fetchInstallmentPlans(); // Refresh data

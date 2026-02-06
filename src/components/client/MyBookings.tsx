@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { Building, Calendar, CreditCard } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/hooks/useAuth';
@@ -42,18 +41,14 @@ const MyBookings = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('property_bookings')
-        .select(`
-          *,
-          properties (title, location, status),
-          installment_plans (*)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setBookings(data || []);
+      const response = await fetch('/api/bookings', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch bookings');
+      const data = await response.json();
+      setBookings(data.bookings || data || []);
     } catch (error: any) {
       toast.error('Failed to fetch bookings: ' + error.message);
     } finally {

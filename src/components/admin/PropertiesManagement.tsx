@@ -4,11 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit, Trash2, Building } from 'lucide-react';
 import { toast } from "sonner";
-import { useRealtime } from "@/hooks/useRealtime";
 import PropertyUploadForm from "./PropertyUploadForm";
+import axios from 'axios';
 
 interface Property {
   id: string;
@@ -38,57 +37,44 @@ const PropertiesManagement = () => {
     fetchProperties();
   }, []);
 
-  // Real-time updates
-  useRealtime({
-    table: 'properties',
-    onInsert: (payload) => {
-      const newProperty = payload.new as Property;
-      setProperties(prev => [newProperty, ...prev]);
-      toast.success('New property added!');
-    },
-    onUpdate: (payload) => {
-      const updatedProperty = payload.new as Property;
-      setProperties(prev => prev.map(p => 
-        p.id === updatedProperty.id ? updatedProperty : p
-      ));
-      toast.success('Property updated!');
-    },
-    onDelete: (payload) => {
-      const deletedId = payload.old.id;
-      setProperties(prev => prev.filter(p => p.id !== deletedId));
-      toast.success('Property deleted!');
-    }
-  });
+  useEffect(() => {
+    const interval = setInterval(fetchProperties, 30000); // Poll every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchProperties = async () => {
     try {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProperties(data || []);
-    } catch (error: any) {
-      toast.error('Failed to fetch properties: ' + error.message);
+      const response = await fetch('/api/properties');
+      if (!response.ok) {
+        throw new Error('Failed to fetch properties');
+      }
+      const data = await response.json();
+      setProperties(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+      toast.error('Failed to load properties');
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteProperty = async (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this property?')) return;
+    
     try {
-      const { error } = await supabase
-        .from('properties')
-        .delete()
-        .eq('id', id);
+      const response = await fetch(`/api/properties/${id}`, {
+        method: 'DELETE',
+      });
 
-      if (error) throw error;
-      
-      setProperties(properties.filter(p => p.id !== id));
+      if (!response.ok) {
+        throw new Error('Failed to delete property');
+      }
+
+      setProperties(properties.filter(property => property.id !== id));
       toast.success('Property deleted successfully');
-    } catch (error: any) {
-      toast.error('Failed to delete property: ' + error.message);
+    } catch (error) {
+      console.error('Error deleting property:', error);
+      toast.error('Failed to delete property');
     }
   };
 

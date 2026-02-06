@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Search, Star, User, Building, Filter, Quote } from 'lucide-react';
+// Using text-based icons
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
@@ -38,20 +38,13 @@ const Testimonials = () => {
     fetchTestimonials();
   }, []);
 
+
   const fetchTestimonials = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('testimonials')
-        .select(`
-          *,
-          property:properties(title, location)
-        `)
-        .eq('status', 'approved')
-        .order('featured', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const res = await fetch('/api/testimonials');
+      if (!res.ok) throw new Error('Failed to fetch testimonials');
+      const data = await res.json();
       setTestimonials(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch testimonials: ' + error.message);
@@ -74,14 +67,17 @@ const Testimonials = () => {
     return matchesSearch && matchesRating && matchesFeatured;
   });
 
-  const renderStars = (rating: number) => {
+// Using generic icons - we'll render stars with emoji instead
+const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
-      <Star
+      <span
         key={i}
-        className={`h-4 w-4 ${
-          i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+        className={`text-lg ${
+          i < rating ? 'text-yellow-400' : 'text-gray-300'
         }`}
-      />
+      >
+        ★
+      </span>
     ));
   };
 
@@ -115,7 +111,7 @@ const Testimonials = () => {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <span className="absolute left-3 top-3 h-4 w-4 text-gray-400">🔍</span>
               <Input
                 placeholder="Search testimonials..."
                 value={searchTerm}
@@ -148,35 +144,35 @@ const Testimonials = () => {
         </div>
 
         {/* Testimonials Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="flex items-center space-x-3">
-                    <div className="h-12 w-12 bg-gray-200 rounded-full"></div>
-                    <div>
-                      <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-32"></div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-gray-200 rounded w-full"></div>
-                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : filteredTestimonials.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg mb-4">No testimonials found</div>
-            <p className="text-gray-400">Try adjusting your search or filter criteria</p>
-          </div>
-        ) : (
+         {loading ? (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+             {[...Array(6)].map((_, i) => (
+               <Card key={i}>
+                 <CardHeader>
+                   <div className="flex items-center space-x-3">
+                     <Skeleton className="h-12 w-12 rounded-full" />
+                     <div>
+                       <Skeleton className="h-4 w-24 mb-2" />
+                       <Skeleton className="h-3 w-32" />
+                     </div>
+                   </div>
+                 </CardHeader>
+                 <CardContent>
+                   <div className="space-y-2">
+                     <Skeleton className="h-3 w-full" />
+                     <Skeleton className="h-3 w-3/4" />
+                     <Skeleton className="h-3 w-1/2" />
+                   </div>
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
+         ) : filteredTestimonials.length === 0 ? (
+           <div className="text-center py-12">
+             <div className="text-gray-500 text-lg mb-4">No testimonials found</div>
+             <p className="text-gray-400">Try adjusting your search or filter criteria</p>
+           </div>
+         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTestimonials.map((testimonial) => (
               <Card key={testimonial.id} className={`group hover:shadow-lg transition-shadow ${
@@ -193,7 +189,7 @@ const Testimonials = () => {
                         />
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-brand-gold flex items-center justify-center">
-                          <User className="h-6 w-6 text-white" />
+                          <span className="text-white font-bold">👤</span>
                         </div>
                       )}
                     </div>
@@ -210,7 +206,7 @@ const Testimonials = () => {
                           )}
                           {testimonial.client_company && (
                             <p className="text-sm text-gray-600 flex items-center gap-1">
-                              <Building className="h-3 w-3" />
+                              <span>🏢</span>
                               {testimonial.client_company}
                             </p>
                           )}
@@ -232,7 +228,7 @@ const Testimonials = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="relative">
-                    <Quote className="absolute -top-2 -left-2 h-6 w-6 text-brand-gold opacity-50" />
+                    <span className="absolute -top-2 -left-2 h-6 w-6 text-brand-gold opacity-50 text-2xl">"</span>
                     <p className="text-gray-700 leading-relaxed pl-4">
                       "{testimonial.testimonial_text}"
                     </p>

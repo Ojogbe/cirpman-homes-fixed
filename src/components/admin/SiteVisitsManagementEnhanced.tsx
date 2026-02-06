@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { Calendar, Clock, Search, Users, Phone, Mail } from 'lucide-react';
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";

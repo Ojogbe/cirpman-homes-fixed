@@ -6,9 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Plus, X } from 'lucide-react';
+import axios from 'axios';
 
 interface PropertyUploadFormProps {
   onSuccess?: () => void;
@@ -106,6 +106,13 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
     }
   }, [installmentConfig, formData.installment_available]);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const files = Array.from(e.target.files);
+    setImages([...images, ...files]);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -124,21 +131,38 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
     setInstallmentConfig(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileUpload = async (file: File, bucket: string, folder: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${folder}/${Date.now()}-${Math.random()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file);
+  const uploadFile = async (file: File, path: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
 
-    if (error) throw error;
+    try {
+      const response = await axios.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
 
-    return publicUrl;
+      return response.data.url;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw error;
+    }
+  };
+
+  const handleFileUpload = async (file: File, path: string, type: 'featured' | 'images' | 'videos') => {
+    try {
+      const url = await uploadFile(file, `properties/${type}`);
+      return url;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file. Please try again.');
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -154,20 +178,20 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
       // Upload featured image
       let featuredImageUrl = property?.featured_image || '';
       if (featuredImageFile) {
-        featuredImageUrl = await handleFileUpload(featuredImageFile, 'real-estate-uploads', 'featured');
+        featuredImageUrl = await handleFileUpload(featuredImageFile, 'properties/featured', 'featured');
       }
 
       // Upload additional images
       let imageUrls = property?.images || [];
       if (images.length > 0) {
-        const uploaded = await Promise.all(images.map(img => handleFileUpload(img, 'real-estate-uploads', 'images')));
+        const uploaded = await Promise.all(images.map(img => handleFileUpload(img, 'properties/images', 'images')));
         imageUrls = [...imageUrls, ...uploaded];
       }
 
       // Upload videos
       let videoUrls = property?.videos || [];
       if (videos.length > 0) {
-        const uploaded = await Promise.all(videos.map(video => handleFileUpload(video, 'real-estate-uploads', 'videos')));
+        const uploaded = await Promise.all(videos.map(video => handleFileUpload(video, 'properties/videos', 'videos')));
         videoUrls = [...videoUrls, ...uploaded];
       }
 
@@ -176,45 +200,47 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
         title: formData.title,
         description: formData.description,
         location: formData.location,
+        google_maps: formData.google_maps,
         size_min: parseInt(formData.size_min),
         size_max: parseInt(formData.size_max || formData.size_min),
         price_min: parseFloat(formData.price_min),
         price_max: parseFloat(formData.price_max || formData.price_min),
-        status: formData.status as any,
-        progress: formData.progress as any,
-        installment_available: formData.installment_available,
+        status: formData.status,
+        progress: formData.progress,
         featured_image: featuredImageUrl,
         images: imageUrls,
         videos: videoUrls,
-        ...(formData.installment_available ? { installment_config: {
-          duration: Number(installmentConfig.duration),
-          minDepositPercent: Number(installmentConfig.minDepositPercent),
-          interestRate: Number(installmentConfig.interestRate),
-          pricePerSqm: Number(installmentConfig.pricePerSqm),
-          minSqm: Number(installmentConfig.minSqm),
-          maxSqm: Number(installmentConfig.maxSqm),
-        }} : {}),
+        installment_available: formData.installment_available,
+        ...(formData.installment_available ? { 
+          installment_config: {
+            duration: Number(installmentConfig.duration),
+            minDepositPercent: Number(installmentConfig.minDepositPercent),
+            interestRate: Number(installmentConfig.interestRate),
+            pricePerSqm: Number(installmentConfig.pricePerSqm),
+            minSqm: Number(installmentConfig.minSqm),
+            maxSqm: Number(installmentConfig.maxSqm),
+          }
+        } : {}),
       };
 
-      let error;
-      if (property) {
-        // Update
-        ({ error } = await supabase
-          .from('properties')
-          .update(propertyData)
-          .eq('id', property.id));
-      } else {
-        // Create
-        ({ error } = await supabase
-          .from('properties')
-          .insert([propertyData]));
-      }
+      // Send the data to your API endpoint
+      const response = await fetch('/api/properties', {
+        method: property ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(property ? { id: property.id, ...propertyData } : propertyData),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save property');
+      }
 
       toast.success(property ? 'Property updated successfully!' : 'Property uploaded successfully!');
       onSuccess?.();
     } catch (error: any) {
+      console.error('Error saving property:', error);
       toast.error(`Failed to ${property ? 'update' : 'upload'} property: ${error.message}`);
     } finally {
       setLoading(false);

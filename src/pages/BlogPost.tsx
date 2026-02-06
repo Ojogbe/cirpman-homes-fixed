@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Calendar, User, Eye, Tag, ArrowLeft, Share2, Facebook, Twitter, Linkedin } from 'lucide-react';
 import Navigation from '@/components/Navigation';
@@ -45,42 +44,30 @@ const BlogPost = () => {
     setLoading(true);
     try {
       // Fetch the main post
-      const { data: postData, error: postError } = await supabase
-        .from('blog_posts')
-        .select(`
-          *,
-          author:profiles(full_name, email)
-        `)
-        .eq('slug', slug)
-        .eq('status', 'published')
-        .single();
-
-      if (postError) throw postError;
+      const response = await fetch(`/api/blog/${slug}`);
+      if (!response.ok) throw new Error('Failed to fetch blog post');
+      const data = await response.json();
+      const postData = data.post || data;
 
       setPost(postData);
 
       // Increment view count
-      await supabase
-        .from('blog_posts')
-        .update({ view_count: (postData.view_count || 0) + 1 })
-        .eq('id', postData.id);
+      try {
+        await fetch(`/api/blog/${postData.id}/views`, { method: 'PUT' });
+      } catch (err) {
+        // Silently fail if view count increment fails
+      }
 
       // Fetch related posts
       if (postData.tags && postData.tags.length > 0) {
-        const { data: relatedData, error: relatedError } = await supabase
-          .from('blog_posts')
-          .select(`
-            *,
-            author:profiles(full_name, email)
-          `)
-          .eq('status', 'published')
-          .neq('id', postData.id)
-          .contains('tags', postData.tags)
-          .order('published_at', { ascending: false })
-          .limit(3);
-
-        if (!relatedError) {
-          setRelatedPosts(relatedData || []);
+        try {
+          const relatedResponse = await fetch(`/api/blog/${slug}/related`);
+          if (relatedResponse.ok) {
+            const relatedData = await relatedResponse.json();
+            setRelatedPosts(relatedData.relatedPosts || relatedData.related || []);
+          }
+        } catch (err) {
+          // Silently fail if related posts fail
         }
       }
 

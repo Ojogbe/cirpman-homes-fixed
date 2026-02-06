@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Building, Calendar, BarChart3 } from 'lucide-react'; // Only keep icons used in overview
 import ClientsManagement from '@/components/admin/ClientsManagement';
@@ -26,6 +25,7 @@ const AdminDashboard = () => {
     properties: 0,
     siteVisits: 0,
     revenue: 0,
+    subscriptions: 0,
   });
   const [overviewLoading, setOverviewLoading] = useState(true);
 
@@ -39,29 +39,32 @@ const AdminDashboard = () => {
   const fetchOverview = async () => {
     setOverviewLoading(true);
     try {
-      // Total clients
-      const { count: clientsCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-      // Total properties
-      const { count: propertiesCount } = await supabase
-        .from('properties')
-        .select('*', { count: 'exact', head: true });
-      // Site visit requests
-      const { count: siteVisitsCount } = await supabase
-        .from('site_visit_bookings')
-        .select('*', { count: 'exact', head: true });
-      // Hide revenue in this version
-      const revenue = 0;
-      setOverview({
-        clients: clientsCount || 0,
-        properties: propertiesCount || 0,
-        siteVisits: siteVisitsCount || 0,
-        revenue,
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/admin/stats', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOverview({
+          clients: data.clients || 0,
+          properties: data.properties || 0,
+          siteVisits: data.siteVisits || 0,
+          revenue: data.revenue || 0,
+          subscriptions: data.subscriptions || 0,
+        });
+      } else {
+        // Fallback on error
+        setOverview({ clients: 0, properties: 0, siteVisits: 0, revenue: 0, subscriptions: 0 });
+      }
     } catch (e) {
+      console.error('Error fetching overview:', e);
       // fallback to 0s
-      setOverview({ clients: 0, properties: 0, siteVisits: 0, revenue: 0 });
+      setOverview({ clients: 0, properties: 0, siteVisits: 0, revenue: 0, subscriptions: 0 });
     } finally {
       setOverviewLoading(false);
     }
@@ -146,7 +149,7 @@ const AdminDashboard = () => {
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">---</div>
+                <div className="text-2xl font-bold">{overviewLoading ? '...' : `₦${(overview.revenue || 0).toLocaleString()}`}</div>
                 <p className="text-xs text-muted-foreground">Total earnings</p>
               </CardContent>
             </Card>

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search, Calendar, User, Eye, ArrowRight, Tag } from 'lucide-react';
 import Navigation from '@/components/Navigation';
@@ -47,46 +46,32 @@ const Blog = () => {
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('blog_posts')
-        .select(`
-          *,
-          author:profiles(full_name, email)
-        `)
-        .eq('status', 'published')
-        .order('published_at', { ascending: false });
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: postsPerPage.toString(),
+      });
 
-      // Apply search filter
       if (searchTerm) {
-        query = query.or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%,excerpt.ilike.%${searchTerm}%`);
+        params.append('search', searchTerm);
       }
 
-      // Apply category filter
       if (selectedCategory !== 'all') {
-        query = query.contains('tags', [selectedCategory]);
+        params.append('category', selectedCategory);
       }
 
-      // Get total count for pagination
-      const { count } = await supabase
-        .from('blog_posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'published');
-
-      setTotalPages(Math.ceil((count || 0) / postsPerPage));
-
-      // Apply pagination
-      const from = (currentPage - 1) * postsPerPage;
-      const to = from + postsPerPage - 1;
-      query = query.range(from, to);
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      setPosts(data || []);
+      const response = await fetch(`/api/blog?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch blog posts');
+      const data = await response.json();
+      
+      const posts = data.posts || data;
+      const total = data.total || posts.length;
+      
+      setPosts(posts);
+      setTotalPages(Math.ceil(total / postsPerPage));
 
       // Extract unique categories from tags
-      const allTags = data?.flatMap(post => post.tags || []) || [];
+      const allTags = posts?.flatMap((post: any) => post.tags || []) || [];
       const uniqueCategories = [...new Set(allTags)];
       setCategories(uniqueCategories);
 
