@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, HelpCircle, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { invokeWorker } from '@/lib/worker';
 
 interface FAQ {
   id: string;
@@ -42,13 +43,7 @@ const FAQManagement = () => {
   const fetchFAQs = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('faq')
-        .select('*')
-        .order('order_index', { ascending: true })
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await invokeWorker('get-faqs', {});
       setFaqs(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch FAQ: ' + error.message);
@@ -71,7 +66,7 @@ const FAQManagement = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'order_index' ? parseInt(value) : value
     }));
   };
 
@@ -88,19 +83,10 @@ const FAQManagement = () => {
 
     try {
       if (editingFAQ) {
-        const { error } = await supabase
-          .from('faq')
-          .update(formData)
-          .eq('id', editingFAQ.id);
-
-        if (error) throw error;
+        await invokeWorker('update-faq', { ...formData, id: editingFAQ.id });
         toast.success('FAQ updated successfully!');
       } else {
-        const { error } = await supabase
-          .from('faq')
-          .insert([formData]);
-
-        if (error) throw error;
+        await invokeWorker('create-faq', formData);
         toast.success('FAQ created successfully!');
       }
 
@@ -129,12 +115,7 @@ const FAQManagement = () => {
   const handleDelete = async (faqId: string) => {
     if (window.confirm('Are you sure you want to delete this FAQ?')) {
       try {
-        const { error } = await supabase
-          .from('faq')
-          .delete()
-          .eq('id', faqId);
-
-        if (error) throw error;
+        await invokeWorker('delete-faq', { id: faqId });
         toast.success('FAQ deleted successfully!');
         fetchFAQs();
       } catch (error: any) {
@@ -145,12 +126,7 @@ const FAQManagement = () => {
 
   const handleToggleActive = async (faqId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('faq')
-        .update({ is_active: !currentStatus })
-        .eq('id', faqId);
-
-      if (error) throw error;
+      await invokeWorker('toggle-faq-status', { id: faqId, is_active: !currentStatus });
       toast.success(`FAQ ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
       fetchFAQs();
     } catch (error: any) {
@@ -158,49 +134,13 @@ const FAQManagement = () => {
     }
   };
 
-  const handleMoveUp = async (faq: FAQ) => {
-    const currentIndex = faqs.findIndex(f => f.id === faq.id);
-    if (currentIndex > 0) {
-      const prevFAQ = faqs[currentIndex - 1];
-      try {
-        await supabase
-          .from('faq')
-          .update({ order_index: prevFAQ.order_index })
-          .eq('id', faq.id);
-        
-        await supabase
-          .from('faq')
-          .update({ order_index: faq.order_index })
-          .eq('id', prevFAQ.id);
-
-        toast.success('FAQ moved up successfully!');
+  const handleMove = async (faqId: string, direction: 'up' | 'down') => {
+    try {
+        await invokeWorker('move-faq', { id: faqId, direction });
+        toast.success(`FAQ moved ${direction} successfully!`);
         fetchFAQs();
-      } catch (error: any) {
+    } catch (error: any) {
         toast.error('Failed to move FAQ: ' + error.message);
-      }
-    }
-  };
-
-  const handleMoveDown = async (faq: FAQ) => {
-    const currentIndex = faqs.findIndex(f => f.id === faq.id);
-    if (currentIndex < faqs.length - 1) {
-      const nextFAQ = faqs[currentIndex + 1];
-      try {
-        await supabase
-          .from('faq')
-          .update({ order_index: nextFAQ.order_index })
-          .eq('id', faq.id);
-        
-        await supabase
-          .from('faq')
-          .update({ order_index: faq.order_index })
-          .eq('id', nextFAQ.id);
-
-        toast.success('FAQ moved down successfully!');
-        fetchFAQs();
-      } catch (error: any) {
-        toast.error('Failed to move FAQ: ' + error.message);
-      }
     }
   };
 
@@ -364,7 +304,7 @@ const FAQManagement = () => {
                   {category} ({categoryFAQs.length})
                 </h3>
                 <div className="space-y-3">
-                  {categoryFAQs.map((faq) => (
+                  {categoryFAQs.map((faq, index) => (
                     <Card key={faq.id} className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -399,16 +339,16 @@ const FAQManagement = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleMoveUp(faq)}
-                              disabled={faqs.findIndex(f => f.id === faq.id) === 0}
+                              onClick={() => handleMove(faq.id, 'up')}
+                              disabled={index === 0}
                             >
                               <ChevronUp className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleMoveDown(faq)}
-                              disabled={faqs.findIndex(f => f.id === faq.id) === faqs.length - 1}
+                              onClick={() => handleMove(faq.id, 'down')}
+                              disabled={index === categoryFAQs.length - 1}
                             >
                               <ChevronDown className="h-4 w-4" />
                             </Button>

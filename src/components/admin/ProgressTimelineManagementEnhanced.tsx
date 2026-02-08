@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Trash2, Calendar, Upload, X } from 'lucide-react';
 import { toast } from "sonner";
-import axios from 'axios';
+import { invokeWorker } from '@/lib/worker';
 
 interface ProgressTimelineItem {
   id: string;
@@ -42,11 +42,7 @@ const ProgressTimelineManagementEnhanced = () => {
 
   const fetchTimelineItems = async () => {
     try {
-      const response = await fetch('/api/progress-timeline');
-      if (!response.ok) {
-        throw new Error('Failed to fetch progress timeline');
-      }
-      const data = await response.json();
+      const data = await invokeWorker('get-progress-timeline-items', {});
       setTimelineItems(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error('Failed to fetch progress timeline: ' + error.message);
@@ -55,31 +51,23 @@ const ProgressTimelineManagementEnhanced = () => {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
-    const isVideo = file.type.startsWith('video/');
-    const path = isVideo ? 'progress-timeline/videos' : 'progress-timeline/images';
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', path);
-
-    try {
-      const response = await axios.post('/api/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.data?.error) {
-        throw new Error(response.data.error);
-      }
-
-      return { url: response.data.url as string, isVideo };
-    } catch (error: any) {
-      console.error('Error uploading progress media:', error);
-      toast.error('Failed to upload media. Please try again.');
-      throw error;
-    }
+  const uploadFile = async (file: File) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64 = reader.result as string;
+            try {
+                const response = await invokeWorker("upload", { file: base64, type: file.type });
+                resolve({ url: response.url, isVideo: file.type.startsWith('video/') });
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = (error) => {
+            reject(error);
+        };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,7 +86,7 @@ const ProgressTimelineManagementEnhanced = () => {
 
       // Upload media files if any
       if (mediaFiles.length > 0) {
-        const uploadPromises = mediaFiles.map(file => handleFileUpload(file));
+        const uploadPromises = mediaFiles.map(file => uploadFile(file));
         const uploadResults = await Promise.all(uploadPromises);
         
         // Use the first image and first video
@@ -109,24 +97,13 @@ const ProgressTimelineManagementEnhanced = () => {
         videoUrl = firstVideo?.url || null;
       }
 
-      const response = await fetch('/api/progress-timeline', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          description: formData.description || null,
-          date: formData.date,
-          image_url: imageUrl,
-          video_url: videoUrl,
-        }),
+      await invokeWorker('create-progress-timeline-item', {
+        title: formData.title,
+        description: formData.description || null,
+        date: formData.date,
+        image_url: imageUrl,
+        video_url: videoUrl,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to add progress update');
-      }
 
       toast.success('Progress update added successfully!');
       setShowAddForm(false);
@@ -142,15 +119,7 @@ const ProgressTimelineManagementEnhanced = () => {
 
   const deleteTimelineItem = async (id: string) => {
     try {
-      const response = await fetch(`/api/progress-timeline/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to delete item');
-      }
-
+      await invokeWorker('delete-progress-timeline-item', { id });
       // Optimistically update local state
       setTimelineItems(prev => prev.filter(item => item.id !== id));
       toast.success('Progress update deleted!');

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, Eye, Calendar, User, Tag, Upload, Save, X } from 'lucide-react';
+import { invokeWorker } from '@/lib/worker';
 
 interface BlogPost {
   id: string;
@@ -55,15 +56,7 @@ const BlogManagement = () => {
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('blog_posts')
-        .select(`
-          *,
-          author:profiles(full_name, email)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await invokeWorker('get-blog-posts', {});
       setPosts(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch blog posts: ' + error.message);
@@ -95,7 +88,6 @@ const BlogManagement = () => {
       [name]: value
     }));
 
-    // Auto-generate slug from title
     if (name === 'title') {
       setFormData(prev => ({
         ...prev,
@@ -128,6 +120,25 @@ const BlogManagement = () => {
     }));
   };
 
+  const uploadFile = async (file: File) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64 = reader.result as string;
+            try {
+                const response = await invokeWorker("upload", { file: base64, type: file.type });
+                resolve(response.url);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = (error) => {
+            reject(error);
+        };
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -137,17 +148,7 @@ const BlogManagement = () => {
       }
 
       try {
-        const fileName = `blog-images/${Date.now()}-${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('real-estate-uploads')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('real-estate-uploads')
-          .getPublicUrl(fileName);
-
+        const publicUrl = await uploadFile(file);
         setFormData(prev => ({
           ...prev,
           featured_image_url: publicUrl
@@ -168,23 +169,13 @@ const BlogManagement = () => {
       const postData = {
         ...formData,
         published_at: formData.status === 'published' ? new Date().toISOString() : null,
-        author_id: (await supabase.auth.getUser()).data.user?.id
       };
 
       if (editingPost) {
-        const { error } = await supabase
-          .from('blog_posts')
-          .update(postData)
-          .eq('id', editingPost.id);
-
-        if (error) throw error;
+        await invokeWorker('update-blog-post', { ...postData, id: editingPost.id });
         toast.success('Blog post updated successfully!');
       } else {
-        const { error } = await supabase
-          .from('blog_posts')
-          .insert([postData]);
-
-        if (error) throw error;
+        await invokeWorker('create-blog-post', postData);
         toast.success('Blog post created successfully!');
       }
 
@@ -216,12 +207,7 @@ const BlogManagement = () => {
   const handleDelete = async (postId: string) => {
     if (window.confirm('Are you sure you want to delete this blog post?')) {
       try {
-        const { error } = await supabase
-          .from('blog_posts')
-          .delete()
-          .eq('id', postId);
-
-        if (error) throw error;
+        await invokeWorker('delete-blog-post', { id: postId });
         toast.success('Blog post deleted successfully!');
         fetchPosts();
       } catch (error: any) {

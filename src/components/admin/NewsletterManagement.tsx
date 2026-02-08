@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Search, Mail, Download, Trash2, User, Calendar, Filter } from 'lucide-react';
+import { invokeWorker } from '@/lib/worker';
 
 interface NewsletterSubscription {
   id: string;
@@ -30,10 +31,9 @@ const NewsletterManagement = () => {
   }, []);
 
   const fetchSubscriptions = async () => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/newsletter');
-      if (!res.ok) throw new Error('Failed to fetch subscriptions');
-      const data = await res.json();
+      const data = await invokeWorker('get-newsletter-subscriptions', {});
       setSubscriptions(Array.isArray(data) ? data : data.subscriptions || []);
     } catch (error) {
       console.error('Failed to fetch subscriptions:', error);
@@ -44,6 +44,7 @@ const NewsletterManagement = () => {
   };
 
   const filteredSubscriptions = subscriptions.filter((sub) => {
+    if (!sub) return false;
     const matchesSearch = sub.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (sub.name?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
@@ -53,12 +54,7 @@ const NewsletterManagement = () => {
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
-      const res = await fetch(`/api/newsletter/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      if (!res.ok) throw new Error('Failed to update status');
+      await invokeWorker('update-newsletter-subscription-status', { id, status });
       setSubscriptions(subscriptions.map(s => s.id === id ? { ...s, status } : s));
       toast.success('Status updated successfully');
     } catch (error) {
@@ -70,8 +66,7 @@ const NewsletterManagement = () => {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this subscription?')) return;
     try {
-      const res = await fetch(`/api/newsletter/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete subscription');
+      await invokeWorker('delete-newsletter-subscription', { id });
       setSubscriptions(subscriptions.filter(s => s.id !== id));
       toast.success('Subscription deleted');
     } catch (error) {
@@ -104,7 +99,7 @@ const NewsletterManagement = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const getStatusBadge = (status: string | null) => {
+  const getStatusBadge = (status: string | null | undefined) => {
     const statusConfig = {
       active: { color: 'bg-green-100 text-green-800', label: 'Active' },
       unsubscribed: { color: 'bg-red-100 text-red-800', label: 'Unsubscribed' },
@@ -115,7 +110,7 @@ const NewsletterManagement = () => {
     return <Badge className={config.color}>{config.label}</Badge>;
   };
 
-  const formatDate = (dateString: string | null) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',

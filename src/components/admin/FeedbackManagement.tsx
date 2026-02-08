@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Search, Star, MessageSquare, Reply, Eye, CheckCircle, Clock, User, Building } from 'lucide-react';
+import { invokeWorker } from '@/lib/worker';
 
 interface Feedback {
   id: string;
@@ -43,15 +44,7 @@ const FeedbackManagement = () => {
   const fetchFeedbacks = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('feedback')
-        .select(`
-          *,
-          property:properties(title, location)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await invokeWorker('get-feedbacks', {});
       setFeedbacks(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch feedback: ' + error.message);
@@ -72,12 +65,7 @@ const FeedbackManagement = () => {
 
   const handleStatusChange = async (feedbackId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('feedback')
-        .update({ status: newStatus })
-        .eq('id', feedbackId);
-
-      if (error) throw error;
+      await invokeWorker('update-feedback-status', { feedbackId, newStatus });
       toast.success('Feedback status updated successfully!');
       fetchFeedbacks();
     } catch (error: any) {
@@ -92,17 +80,7 @@ const FeedbackManagement = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('feedback')
-        .update({
-          status: 'replied',
-          reply_message: replyMessage,
-          replied_at: new Date().toISOString(),
-          replied_by: (await supabase.auth.getUser()).data.user?.id
-        })
-        .eq('id', feedbackId);
-
-      if (error) throw error;
+      await invokeWorker('reply-to-feedback', { feedbackId, replyMessage });
       toast.success('Reply sent successfully!');
       setReplyDialogOpen(false);
       setReplyMessage('');

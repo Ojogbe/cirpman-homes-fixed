@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Users, UserCog } from 'lucide-react';
 import { toast } from "sonner";
-import { useRealtime } from "@/hooks/useRealtime";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
+import { invokeWorker } from '@/lib/worker';
 
 interface Client {
   id: string;
@@ -33,58 +32,10 @@ const ClientsManagement = () => {
     fetchClients();
   }, []);
 
-  // Real-time updates for profiles
-  useRealtime({
-    table: 'profiles',
-    onInsert: (payload) => {
-      const newProfile = payload.new;
-      const newClient = {
-        id: newProfile.id,
-        full_name: newProfile.full_name,
-        email: 'Profile-based access',
-        phone: newProfile.phone || 'N/A',
-        created_at: newProfile.created_at,
-        role: newProfile.role
-      };
-      setClients(prev => [newClient, ...prev]);
-      toast.success('New client registered!');
-    },
-    onUpdate: (payload) => {
-      const updatedProfile = payload.new;
-      const updatedClient = {
-        id: updatedProfile.id,
-        full_name: updatedProfile.full_name,
-        email: 'Profile-based access',
-        phone: updatedProfile.phone || 'N/A',
-        created_at: updatedProfile.created_at,
-        role: updatedProfile.role
-      };
-      setClients(prev => prev.map(client => 
-        client.id === updatedClient.id ? updatedClient : client
-      ));
-    }
-  });
-
   const fetchClients = async () => {
     try {
-      // Get profiles from database
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (profilesError) throw profilesError;
-
-      // Map profiles to client data 
-      const clientsData = profiles?.map(profile => ({
-        id: profile.id,
-        full_name: profile.full_name,
-        email: 'Profile-based access',
-        phone: profile.phone || 'N/A',
-        created_at: profile.created_at,
-        role: profile.role
-      })) || [];
-      setClients(clientsData);
+      const clientsData = await invokeWorker('get-clients', {});
+      setClients(clientsData || []);
     } catch (error: any) {
       toast.error('Failed to fetch clients: ' + error.message);
     } finally {
@@ -94,14 +45,8 @@ const ClientsManagement = () => {
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'client') => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      // Update local state
+      await invokeWorker('update-user-role', { userId, newRole });
+      
       setClients(prev => prev.map(client => 
         client.id === userId ? { ...client, role: newRole } : client
       ));
@@ -115,11 +60,7 @@ const ClientsManagement = () => {
   const fetchClientPlans = async (clientId: string) => {
     setPlansLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('property_bookings')
-        .select(`*, properties (title), installment_plans (*)`)
-        .eq('user_id', clientId);
-      if (error) throw error;
+      const data = await invokeWorker('get-client-plans', { clientId });
       setClientPlans(data || []);
     } catch (e) {
       setClientPlans([]);
@@ -127,23 +68,22 @@ const ClientsManagement = () => {
       setPlansLoading(false);
     }
   };
+
   const handleOpenClientPlans = (client: any) => {
     setSelectedClient(client);
     fetchClientPlans(client.id);
   };
+
   const handleUpdateStage = async (planId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from('installment_plans')
-      .update({ status: newStatus })
-      .eq('id', planId);
-    if (!error) {
-      setClientPlans(plans => plans.map(plan => ({
-        ...plan,
-        installment_plans: plan.installment_plans.map((ip: any) => ip.id === planId ? { ...ip, status: newStatus } : ip)
-      })));
-      toast.success('Installment stage updated!');
-    } else {
-      toast.error('Failed to update stage');
+    try {
+        await invokeWorker('update-installment-stage', { planId, newStatus });
+        setClientPlans(plans => plans.map(plan => ({
+            ...plan,
+            installment_plans: plan.installment_plans.map((ip: any) => ip.id === planId ? { ...ip, status: newStatus } : ip)
+          })));
+        toast.success('Installment stage updated!');
+    } catch (error) {
+        toast.error('Failed to update stage');
     }
   };
 

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { toast } from "sonner";
 import { Search, Download, Eye, Mail, Filter, Users, UserCheck } from 'lucide-react';
 import { generateCustomerSubscriptionPDF, generateConsultantSubscriptionPDF, downloadPDF } from '@/lib/pdfGenerator';
+import { invokeWorker } from '@/lib/worker';
 
 interface CustomerSubscription {
   id: string;
@@ -56,24 +57,13 @@ const SubscriptionsManagement = () => {
   const fetchSubscriptions = async () => {
     setLoading(true);
     try {
-      // Fetch customer subscriptions
-      const { data: customerData, error: customerError } = await supabase
-        .from('customer_subscriptions')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [customerData, consultantData] = await Promise.all([
+        invokeWorker('get-customer-subscriptions', {}),
+        invokeWorker('get-consultant-subscriptions', {}),
+      ]);
 
-      if (customerError) throw customerError;
-
-      // Fetch consultant subscriptions
-      const { data: consultantData, error: consultantError } = await supabase
-        .from('consultant_subscriptions')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (consultantError) throw consultantError;
-
-      setCustomerSubscriptions(customerData || []);
-      setConsultantSubscriptions(consultantData || []);
+      setCustomerSubscriptions(Array.isArray(customerData) ? customerData : []);
+      setConsultantSubscriptions(Array.isArray(consultantData) ? consultantData : []);
     } catch (error: any) {
       toast.error('Failed to fetch subscriptions: ' + error.message);
     } finally {

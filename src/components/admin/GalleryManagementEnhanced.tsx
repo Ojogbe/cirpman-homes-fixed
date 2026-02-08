@@ -8,8 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Upload, Plus, Trash2, Images, X } from 'lucide-react';
 import { toast } from "sonner";
-import { useRealtime } from "@/hooks/useRealtime";
-import { uploadToGoogleDrive } from '@/lib/googleDrive';
+import { invokeWorker } from '@/lib/worker';
 
 interface GalleryItem {
   id: string;
@@ -36,29 +35,10 @@ const GalleryManagementEnhanced = () => {
     fetchGalleryItems();
   }, []);
 
-  // Real-time updates
-  useRealtime({
-    table: 'gallery',
-    onInsert: (payload) => {
-      const newItem = payload.new as GalleryItem;
-      setGalleryItems(prev => [newItem, ...prev]);
-      toast.success('New gallery item added!');
-    },
-    onDelete: (payload) => {
-      const deletedId = payload.old.id;
-      setGalleryItems(prev => prev.filter(item => item.id !== deletedId));
-      toast.success('Gallery item deleted!');
-    }
-  });
-
   const fetchGalleryItems = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('gallery')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await invokeWorker('get-gallery-items', {});
       setGalleryItems(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch gallery items: ' + error.message);
@@ -67,13 +47,23 @@ const GalleryManagementEnhanced = () => {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
-    try {
-      const { url, isVideo } = await uploadToGoogleDrive(file);
-      return { url, isVideo };
-    } catch (error) {
-      throw new Error('Failed to upload to Google Drive: ' + error.message);
-    }
+  const uploadFile = async (file: File) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64 = reader.result as string;
+            try {
+                const response = await invokeWorker("upload", { file: base64, type: file.type });
+                resolve(response.url);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = (error) => {
+            reject(error);
+        };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,24 +77,18 @@ const GalleryManagementEnhanced = () => {
     setLoading(true);
 
     try {
-      // Upload all media files to Google Drive
-      const uploadPromises = mediaFiles.map(file => handleFileUpload(file));
+      const uploadPromises = mediaFiles.map(file => uploadFile(file));
       const uploadResults = await Promise.all(uploadPromises);
 
-      // Create gallery items for each uploaded file
-      const galleryItems = uploadResults.map(result => ({
+      const newGalleryItems = mediaFiles.map((file, index) => ({
         title: uploadForm.title,
         description: uploadForm.description || null,
         category: uploadForm.category as any,
-        image_url: result.isVideo ? null : result.url,
-        video_url: result.isVideo ? result.url : null
+        image_url: file.type.startsWith('image') ? uploadResults[index] : null,
+        video_url: file.type.startsWith('video') ? uploadResults[index] : null
       }));
 
-      const { error } = await supabase
-        .from('gallery')
-        .insert(galleryItems);
-
-      if (error) throw error;
+      await invokeWorker('create-gallery-items', { galleryItems: newGalleryItems });
 
       toast.success('Gallery items uploaded successfully!');
       setShowUploadForm(false);
@@ -120,12 +104,8 @@ const GalleryManagementEnhanced = () => {
 
   const deleteGalleryItem = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('gallery')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await invokeWorker('delete-gallery-item', { id });
+      fetchGalleryItems();
     } catch (error: any) {
       toast.error('Failed to delete item: ' + error.message);
     }

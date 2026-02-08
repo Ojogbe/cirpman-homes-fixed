@@ -1,13 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit, Trash2, Building } from 'lucide-react';
 import { toast } from "sonner";
 import PropertyUploadForm from "./PropertyUploadForm";
-import axios from 'axios';
+import { invokeWorker } from '@/lib/worker';
 
 interface Property {
   id: string;
@@ -35,20 +33,13 @@ const PropertiesManagement = () => {
 
   useEffect(() => {
     fetchProperties();
-  }, []);
-
-  useEffect(() => {
     const interval = setInterval(fetchProperties, 30000); // Poll every 30 seconds
     return () => clearInterval(interval);
   }, []);
 
   const fetchProperties = async () => {
     try {
-      const response = await fetch('/api/properties');
-      if (!response.ok) {
-        throw new Error('Failed to fetch properties');
-      }
-      const data = await response.json();
+      const data = await invokeWorker('get-properties', {});
       setProperties(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching properties:', error);
@@ -58,18 +49,11 @@ const PropertiesManagement = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const deleteProperty = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this property?')) return;
     
     try {
-      const response = await fetch(`/api/properties/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete property');
-      }
-
+      await invokeWorker('delete-property', { id });
       setProperties(properties.filter(property => property.id !== id));
       toast.success('Property deleted successfully');
     } catch (error) {

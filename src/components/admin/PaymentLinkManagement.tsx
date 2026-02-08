@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { invokeWorker } from '@/lib/worker';
 
 interface PaymentLink {
   id: string;
@@ -47,11 +48,7 @@ const PaymentLinkManagement: React.FC = () => {
   const fetchPaymentLinks = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/payment-links');
-      if (!response.ok) {
-        throw new Error('Failed to fetch payment links');
-      }
-      const data = await response.json();
+      const data = await invokeWorker('get-payment-links', {});
       setPaymentLinks(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error('Error fetching payment links: ' + error.message);
@@ -71,22 +68,7 @@ const PaymentLinkManagement: React.FC = () => {
     if (editingLink) {
       // Update existing link
       try {
-        const response = await fetch(`/api/payment-links/${editingLink.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            section_name: formData.section_name,
-            link_url: formData.link_url,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to update payment link');
-        }
-
+        await invokeWorker('update-payment-link', { ...formData, id: editingLink.id });
         toast.success('Payment link updated successfully!');
         setEditingLink(null);
         setFormData({ section_name: '', link_url: '' });
@@ -97,19 +79,7 @@ const PaymentLinkManagement: React.FC = () => {
     } else {
       // Add new link
       try {
-        const response = await fetch('/api/payment-links', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to add payment link');
-        }
-
+        await invokeWorker('create-payment-link', formData);
         toast.success('Payment link added successfully!');
         setFormData({ section_name: '', link_url: '' });
         fetchPaymentLinks();
@@ -134,15 +104,7 @@ const PaymentLinkManagement: React.FC = () => {
     }
     setLoading(true);
     try {
-      const response = await fetch(`/api/payment-links/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to delete payment link');
-      }
-
+      await invokeWorker('delete-payment-link', { id });
       toast.success('Payment link deleted successfully!');
       fetchPaymentLinks();
     } catch (error: any) {

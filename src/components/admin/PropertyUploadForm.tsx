@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Upload, Plus, X } from 'lucide-react';
-import axios from 'axios';
+import { invokeWorker } from '@/lib/worker';
 
 interface PropertyUploadFormProps {
   onSuccess?: () => void;
@@ -131,32 +131,28 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
     setInstallmentConfig(prev => ({ ...prev, [name]: value }));
   };
 
-  const uploadFile = async (file: File, path: string) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', path);
-
-    try {
-      const response = await axios.post('/api/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.data.error) {
-        throw new Error(response.data.error);
-      }
-
-      return response.data.url;
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      throw error;
-    }
+  const uploadFile = async (file: File) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64 = reader.result as string;
+            try {
+                const response = await invokeWorker("upload", { file: base64, type: file.type });
+                resolve(response.url);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = (error) => {
+            reject(error);
+        };
+    });
   };
 
-  const handleFileUpload = async (file: File, path: string, type: 'featured' | 'images' | 'videos') => {
+  const handleFileUpload = async (file: File, type: 'featured' | 'images' | 'videos') => {
     try {
-      const url = await uploadFile(file, `properties/${type}`);
+      const url = await uploadFile(file);
       return url;
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -178,20 +174,20 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
       // Upload featured image
       let featuredImageUrl = property?.featured_image || '';
       if (featuredImageFile) {
-        featuredImageUrl = await handleFileUpload(featuredImageFile, 'properties/featured', 'featured');
+        featuredImageUrl = await handleFileUpload(featuredImageFile, 'featured');
       }
 
       // Upload additional images
       let imageUrls = property?.images || [];
       if (images.length > 0) {
-        const uploaded = await Promise.all(images.map(img => handleFileUpload(img, 'properties/images', 'images')));
+        const uploaded = await Promise.all(images.map(img => handleFileUpload(img, 'images')));
         imageUrls = [...imageUrls, ...uploaded];
       }
 
       // Upload videos
       let videoUrls = property?.videos || [];
       if (videos.length > 0) {
-        const uploaded = await Promise.all(videos.map(video => handleFileUpload(video, 'properties/videos', 'videos')));
+        const uploaded = await Promise.all(videos.map(video => handleFileUpload(video, 'videos')));
         videoUrls = [...videoUrls, ...uploaded];
       }
 
@@ -223,18 +219,10 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
         } : {}),
       };
 
-      // Send the data to your API endpoint
-      const response = await fetch('/api/properties', {
-        method: property ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(property ? { id: property.id, ...propertyData } : propertyData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save property');
+      if (property) {
+        await invokeWorker('update-property', { id: property.id, ...propertyData });
+      } else {
+        await invokeWorker('create-property', propertyData);
       }
 
       toast.success(property ? 'Property updated successfully!' : 'Property uploaded successfully!');

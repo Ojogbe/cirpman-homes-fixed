@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, Star, User, Building, Upload, Check, X } from 'lucide-react';
+import { invokeWorker } from '@/lib/worker';
 
 interface Testimonial {
   id: string;
@@ -52,7 +53,7 @@ const TestimonialsManagement = () => {
     featured: false,
     status: 'pending',
     client_photo_url: '',
-    property_id: 'null-property' // Initialize with 'null-property' to avoid empty string issue
+    property_id: 'null-property'
   });
 
   useEffect(() => {
@@ -63,16 +64,8 @@ const TestimonialsManagement = () => {
   const fetchTestimonials = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('testimonials')
-        .select(`
-          *,
-          property:properties(id, title, location)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTestimonials(data || []);
+      const data = await invokeWorker('get-testimonials', {});
+      setTestimonials(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error('Failed to fetch testimonials: ' + error.message);
     } finally {
@@ -82,13 +75,8 @@ const TestimonialsManagement = () => {
 
   const fetchProperties = async () => {
     try {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('id, title, location')
-        .eq('status', 'Available');
-
-      if (error) throw error;
-      setProperties(data || []);
+      const data = await invokeWorker('get-properties', { status: 'Available' });
+      setProperties(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Failed to fetch properties:', error);
     }
@@ -98,7 +86,7 @@ const TestimonialsManagement = () => {
     const matchesSearch = 
       testimonial.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       testimonial.testimonial_text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      testimonial.client_company?.toLowerCase().includes(searchTerm.toLowerCase());
+      (testimonial.client_company && testimonial.client_company.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || testimonial.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -114,7 +102,7 @@ const TestimonialsManagement = () => {
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      [name]: value === 'null-property' ? '' : value, // Convert 'null-property' back to empty string for consistent internal state
+      [name]: value === 'null-property' ? '' : value,
     }));
   };
 
@@ -123,6 +111,25 @@ const TestimonialsManagement = () => {
       ...prev,
       rating
     }));
+  };
+
+  const uploadFile = async (file: File) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64 = reader.result as string;
+            try {
+                const response = await invokeWorker("upload", { file: base64, type: file.type });
+                resolve(response.url);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = (error) => {
+            reject(error);
+        };
+    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,22 +141,11 @@ const TestimonialsManagement = () => {
       }
 
       try {
-        const fileName = `testimonial-photos/${Date.now()}-${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('real-estate-uploads')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('real-estate-uploads')
-          .getPublicUrl(fileName);
-
+        const publicUrl = await uploadFile(file);
         setFormData(prev => ({
           ...prev,
           client_photo_url: publicUrl
         }));
-
         toast.success('Photo uploaded successfully!');
       } catch (error: any) {
         toast.error('Failed to upload photo: ' + error.message);
@@ -164,25 +160,14 @@ const TestimonialsManagement = () => {
     try {
       const testimonialData = {
         ...formData,
-        property_id: formData.property_id === '' ? null : formData.property_id, // Ensure null if no property selected
-        approved_at: formData.status === 'approved' ? new Date().toISOString() : null,
-        approved_by: formData.status === 'approved' ? (await supabase.auth.getUser()).data.user?.id : null
+        property_id: formData.property_id === '' ? null : formData.property_id,
       };
 
       if (editingTestimonial) {
-        const { error } = await supabase
-          .from('testimonials')
-          .update(testimonialData)
-          .eq('id', editingTestimonial.id);
-
-        if (error) throw error;
+        await invokeWorker('update-testimonial', { id: editingTestimonial.id, ...testimonialData });
         toast.success('Testimonial updated successfully!');
       } else {
-        const { error } = await supabase
-          .from('testimonials')
-          .insert([testimonialData]);
-
-        if (error) throw error;
+        await invokeWorker('create-testimonial', testimonialData);
         toast.success('Testimonial created successfully!');
       }
 
@@ -191,7 +176,7 @@ const TestimonialsManagement = () => {
       fetchTestimonials();
     } catch (error: any) {
       toast.error('Failed to save testimonial: ' + error.message);
-      console.error("Error saving testimonial:", error); // Add comprehensive logging
+      console.error("Error saving testimonial:", error);
     } finally {
       setLoading(false);
     }
@@ -208,7 +193,7 @@ const TestimonialsManagement = () => {
       featured: testimonial.featured,
       status: testimonial.status,
       client_photo_url: testimonial.client_photo_url || '',
-      property_id: testimonial.property_id || testimonial.property?.id || 'null-property' // Set to 'null-property' for no selection
+      property_id: testimonial.property_id || testimonial.property?.id || 'null-property'
     });
     setDialogOpen(true);
   };
@@ -216,12 +201,7 @@ const TestimonialsManagement = () => {
   const handleDelete = async (testimonialId: string) => {
     if (window.confirm('Are you sure you want to delete this testimonial?')) {
       try {
-        const { error } = await supabase
-          .from('testimonials')
-          .delete()
-          .eq('id', testimonialId);
-
-        if (error) throw error;
+        await invokeWorker('delete-testimonial', { testimonialId });
         toast.success('Testimonial deleted successfully!');
         fetchTestimonials();
       } catch (error: any) {
@@ -232,18 +212,7 @@ const TestimonialsManagement = () => {
 
   const handleStatusChange = async (testimonialId: string, newStatus: string) => {
     try {
-      const updateData: any = { status: newStatus };
-      if (newStatus === 'approved') {
-        updateData.approved_at = new Date().toISOString();
-        updateData.approved_by = (await supabase.auth.getUser()).data.user?.id;
-      }
-
-      const { error } = await supabase
-        .from('testimonials')
-        .update(updateData)
-        .eq('id', testimonialId);
-
-      if (error) throw error;
+      await invokeWorker('update-testimonial-status', { testimonialId, newStatus });
       toast.success('Testimonial status updated successfully!');
       fetchTestimonials();
     } catch (error: any) {
@@ -261,7 +230,7 @@ const TestimonialsManagement = () => {
       featured: false,
       status: 'pending',
       client_photo_url: '',
-      property_id: 'null-property' // Reset to 'null-property'
+      property_id: 'null-property'
     });
     setEditingTestimonial(null);
   };

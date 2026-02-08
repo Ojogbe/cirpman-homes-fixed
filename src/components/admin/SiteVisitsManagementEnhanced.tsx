@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Search, Users, Phone, Mail } from 'lucide-react';
 import { toast } from "sonner";
-import { useRealtime } from "@/hooks/useRealtime";
+import { invokeWorker } from '@/lib/worker';
 
 interface SiteVisitBooking {
   id: string;
@@ -31,31 +31,10 @@ const SiteVisitsManagementEnhanced = () => {
     fetchBookings();
   }, []);
 
-  // Real-time updates
-  useRealtime({
-    table: 'site_visit_bookings',
-    onInsert: (payload) => {
-      const newBooking = payload.new as SiteVisitBooking;
-      setBookings(prev => [newBooking, ...prev]);
-      toast.success('New site visit booking received!');
-    },
-    onUpdate: (payload) => {
-      const updatedBooking = payload.new as SiteVisitBooking;
-      setBookings(prev => prev.map(booking => 
-        booking.id === updatedBooking.id ? updatedBooking : booking
-      ));
-    }
-  });
-
   const fetchBookings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('site_visit_bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setBookings(data || []);
+      const data = await invokeWorker('get-site-visit-bookings', {});
+      setBookings(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error('Failed to fetch bookings: ' + error.message);
     } finally {
@@ -65,19 +44,12 @@ const SiteVisitsManagementEnhanced = () => {
 
   const updateFollowUpStatus = async (bookingId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('site_visit_bookings')
-        .update({ follow_up_status: newStatus })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
+      await invokeWorker('update-site-visit-status', { bookingId, newStatus });
       setBookings(prev => prev.map(booking =>
         booking.id === bookingId 
           ? { ...booking, follow_up_status: newStatus }
           : booking
       ));
-
       toast.success('Follow-up status updated');
     } catch (error: any) {
       toast.error('Failed to update status: ' + error.message);
