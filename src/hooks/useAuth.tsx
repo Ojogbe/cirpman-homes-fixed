@@ -1,98 +1,103 @@
 
-
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { worker } from '../lib/worker';
+
+interface Profile {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  role: 'client' | 'admin';
+}
 
 interface AuthState {
-  user: any;
-  token: string | null;
-  userRole: string;
+  user: User | null;
+  profile: Profile | null;
   loading: boolean;
   error: string | null;
 }
 
-export const useAuth = (requireAuth = false, requiredRole?: string) => {
+const AuthContext = createContext<AuthState | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
-    token: null,
-    userRole: 'client',
+    profile: null,
     loading: false,
-    error: null
+    error: null,
   });
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load token from localStorage and validate
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // Optionally validate token with backend
-      fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'validate' })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.valid) {
-            setAuthState(prev => ({ ...prev, token, user: { email: data.email }, loading: false }));
-          } else {
-            localStorage.removeItem('auth_token');
-            setAuthState(prev => ({ ...prev, token: null, user: null, loading: false }));
-            if (requireAuth) navigate('/auth');
-          }
-        })
-        .catch(() => {
-          localStorage.removeItem('auth_token');
-          setAuthState(prev => ({ ...prev, token: null, user: null, loading: false }));
-          if (requireAuth) navigate('/auth');
-        });
-    } else {
-      setAuthState(prev => ({ ...prev, token: null, user: null, loading: false }));
-      if (requireAuth) navigate('/auth');
-    }
-  }, [requireAuth, navigate]);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const response = await worker.post('/get-user-profile', { userId: user.uid });
+          const profile = await response.json();
+          setAuthState({ user, profile, loading: false, error: null });
+        } catch (error) {
+          console.error("Failed to fetch user profile:", error);
+          setAuthState({ user, profile: null, loading: false, error: 'Failed to fetch user profile' });
+        }
+      } else {
+        setAuthState({ user: null, profile: null, loading: false, error: null });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, action: 'login' })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-      localStorage.setItem('auth_token', data.token);
-      setAuthState(prev => ({ ...prev, token: data.token, user: { email }, loading: false }));
-      navigate('/dashboard/client');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      const response = await worker.post('/get-user-profile', { userId: user.uid });
+      const profile: Profile = await response.json();
+      setAuthState({ user, profile, loading: false, error: null });
+      if (profile.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard/client');
+      }
     } catch (err: any) {
       setAuthState(prev => ({ ...prev, error: err.message, loading: false }));
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, fullName: string, phone: string) => {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, action: 'register' })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Registration failed');
-      localStorage.setItem('auth_token', data.token);
-      setAuthState(prev => ({ ...prev, token: data.token, user: { email }, loading: false }));
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      const response = await worker.post('/get-user-profile', { userId: user.uid, fullName, phone });
+      const profile: Profile = await response.json();
+      setAuthState({ user, profile, loading: false, error: null });
       navigate('/dashboard/client');
     } catch (err: any) {
       setAuthState(prev => ({ ...prev, error: err.message, loading: false }));
     }
   };
 
-  const signOut = () => {
-    localStorage.removeItem('auth_token');
-    setAuthState({ user: null, token: null, userRole: 'client', loading: false, error: null });
+  const signOut = async () => {
+    await firebaseSignOut(auth);
+    setAuthState({ user: null, profile: null, loading: false, error: null });
     navigate('/auth');
   };
 
-  return { ...authState, signIn, signUp, signOut };
+  return (
+    <AuthContext.Provider value={{ ...authState, signIn, signUp, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

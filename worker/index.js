@@ -34,6 +34,23 @@ router.post("/upload", async (request, env) => {
   });
 });
 
+router.post("/get-user-profile", async (request, env) => {
+    const { userId, fullName, phone } = await request.json();
+    let profile = await env.DB.prepare("SELECT * FROM profiles WHERE id = ?").bind(userId).first();
+
+    if (!profile) {
+        await env.DB.prepare("INSERT INTO profiles (id, full_name, phone) VALUES (?, ?, ?)").bind(userId, fullName, phone).run();
+        profile = await env.DB.prepare("SELECT * FROM profiles WHERE id = ?").bind(userId).first();
+    }
+
+    return new Response(JSON.stringify(profile), { headers: { "Content-Type": "application/json" } });
+});
+
+router.post("/get-profiles", async (request, env) => {
+    const { results } = await env.DB.prepare("SELECT * FROM profiles").all();
+    return new Response(JSON.stringify(results), { headers: { "Content-Type": "application/json" } });
+});
+
 router.post("/get-blog-posts", async (request, env) => {
     const { results } = await env.DB.prepare("SELECT * FROM blog_posts ORDER BY created_at DESC").all();
     return new Response(JSON.stringify(results), { headers: { "Content-Type": "application/json" } });
@@ -41,13 +58,17 @@ router.post("/get-blog-posts", async (request, env) => {
 
 router.post("/create-blog-post", async (request, env) => {
     const post = await request.json();
-    await env.DB.prepare("INSERT INTO blog_posts (title, content, author) VALUES (?, ?, ?)").bind(post.title, post.content, post.author).run();
+    await env.DB.prepare("INSERT INTO blog_posts (title, content, author) VALUES (?, ?, ?)")
+        .bind(post.title, post.content, post.author)
+        .run();
     return new Response("OK");
 });
 
 router.post("/update-blog-post", async (request, env) => {
     const { id, ...post } = await request.json();
-    await env.DB.prepare("UPDATE blog_posts SET title = ?, content = ?, author = ? WHERE id = ?").bind(post.title, post.content, post.author, id).run();
+    await env.DB.prepare("UPDATE blog_posts SET title = ?, content = ?, author = ? WHERE id = ?")
+        .bind(post.title, post.content, post.author, id)
+        .run();
     return new Response("OK");
 });
 
@@ -64,13 +85,17 @@ router.post("/get-faqs", async (request, env) => {
 
 router.post("/create-faq", async (request, env) => {
     const faq = await request.json();
-    await env.DB.prepare("INSERT INTO faqs (question, answer) VALUES (?, ?)").bind(faq.question, faq.answer).run();
+    await env.DB.prepare("INSERT INTO faqs (question, answer) VALUES (?, ?)")
+        .bind(faq.question, faq.answer)
+        .run();
     return new Response("OK");
 });
 
 router.post("/update-faq", async (request, env) => {
     const { id, ...faq } = await request.json();
-    await env.DB.prepare("UPDATE faqs SET question = ?, answer = ? WHERE id = ?").bind(faq.question, faq.answer, id).run();
+    await env.DB.prepare("UPDATE faqs SET question = ?, answer = ? WHERE id = ?")
+        .bind(faq.question, faq.answer, id)
+        .run();
     return new Response("OK");
 });
 
@@ -87,7 +112,9 @@ router.post("/get-feedback", async (request, env) => {
 
 router.post("/update-feedback-status", async (request, env) => {
     const { id, status } = await request.json();
-    await env.DB.prepare("UPDATE feedback SET status = ? WHERE id = ?").bind(status, id).run();
+    await env.DB.prepare("UPDATE feedback SET status = ? WHERE id = ?")
+        .bind(status, id)
+        .run();
     return new Response("OK");
 });
 
@@ -98,13 +125,17 @@ router.post("/get-gallery-items", async (request, env) => {
 
 router.post("/create-gallery-item", async (request, env) => {
     const item = await request.json();
-    await env.DB.prepare("INSERT INTO gallery (title, description, image_url) VALUES (?, ?, ?)").bind(item.title, item.description, item.image_url).run();
+    await env.DB.prepare("INSERT INTO gallery (title, description, image_url) VALUES (?, ?, ?)")
+        .bind(item.title, item.description, item.image_url)
+        .run();
     return new Response("OK");
 });
 
 router.post("/update-gallery-item", async (request, env) => {
     const { id, ...item } = await request.json();
-    await env.DB.prepare("UPDATE gallery SET title = ?, description = ?, image_url = ? WHERE id = ?").bind(item.title, item.description, item.image_url, id).run();
+    await env.DB.prepare("UPDATE gallery SET title = ?, description = ?, image_url = ? WHERE id = ?")
+        .bind(item.title, item.description, item.image_url, id)
+        .run();
     return new Response("OK");
 });
 
@@ -126,13 +157,17 @@ router.post("/get-payment-links", async (request, env) => {
 
 router.post("/create-payment-link", async (request, env) => {
     const link = await request.json();
-    await env.DB.prepare("INSERT INTO payment_links (name, url, amount) VALUES (?, ?, ?)").bind(link.name, link.url, link.amount).run();
+    await env.DB.prepare("INSERT INTO payment_links (name, url, amount) VALUES (?, ?, ?)")
+        .bind(link.name, link.url, link.amount)
+        .run();
     return new Response("OK");
 });
 
 router.post("/update-payment-link", async (request, env) => {
     const { id, ...link } = await request.json();
-    await env.DB.prepare("UPDATE payment_links SET name = ?, url = ?, amount = ? WHERE id = ?").bind(link.name, link.url, link.amount, id).run();
+    await env.DB.prepare("UPDATE payment_links SET name = ?, url = ?, amount = ? WHERE id = ?")
+        .bind(link.name, link.url, link.amount, id)
+        .run();
     return new Response("OK");
 });
 
@@ -149,7 +184,9 @@ router.post("/get-progress-timeline-items", async (request, env) => {
 
 router.post("/create-progress-timeline-item", async (request, env) => {
     const item = await request.json();
-    await env.DB.prepare("INSERT INTO progress_timeline (title, description, date) VALUES (?, ?, ?)").bind(item.title, item.description, item.date).run();
+    await env.DB.prepare("INSERT INTO progress_timeline (title, description, date) VALUES (?, ?, ?)")
+        .bind(item.title, item.description, item.date)
+        .run();
     return new Response("OK");
 });
 
@@ -179,7 +216,9 @@ router.post("/get-site-visit-bookings", async (request, env) => {
 
 router.post("/update-site-visit-status", async (request, env) => {
     const { bookingId, newStatus } = await request.json();
-    await env.DB.prepare("UPDATE site_visit_bookings SET follow_up_status = ? WHERE id = ?").bind(newStatus, bookingId).run();
+    await env.DB.prepare("UPDATE site_visit_bookings SET follow_up_status = ? WHERE id = ?")
+        .bind(newStatus, bookingId)
+        .run();
     return new Response("OK");
 });
 
@@ -207,13 +246,17 @@ router.post("/get-testimonials", async (request, env) => {
 
 router.post("/create-testimonial", async (request, env) => {
     const testimonial = await request.json();
-    await env.DB.prepare("INSERT INTO testimonials (client_name, client_title, client_company, testimonial_text, rating, featured, status, client_photo_url, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(testimonial.client_name, testimonial.client_title, testimonial.client_company, testimonial.testimonial_text, testimonial.rating, testimonial.featured, testimonial.status, testimonial.client_photo_url, testimonial.property_id).run();
+    await env.DB.prepare("INSERT INTO testimonials (client_name, client_title, client_company, testimonial_text, rating, featured, status, client_photo_url, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(testimonial.client_name, testimonial.client_title, testimonial.client_company, testimonial.testimonial_text, testimonial.rating, testimonial.featured, testimonial.status, testimonial.client_photo_url, testimonial.property_id)
+        .run();
     return new Response("OK");
 });
 
 router.post("/update-testimonial", async (request, env) => {
     const { id, ...testimonial } = await request.json();
-    await env.DB.prepare("UPDATE testimonials SET client_name = ?, client_title = ?, client_company = ?, testimonial_text = ?, rating = ?, featured = ?, status = ?, client_photo_url = ?, property_id = ? WHERE id = ?").bind(testimonial.client_name, testimonial.client_title, testimonial.client_company, testimonial.testimonial_text, testimonial.rating, testimonial.featured, testimonial.status, testimonial.client_photo_url, testimonial.property_id, id).run();
+    await env.DB.prepare("UPDATE testimonials SET client_name = ?, client_title = ?, client_company = ?, testimonial_text = ?, rating = ?, featured = ?, status = ?, client_photo_url = ?, property_id = ? WHERE id = ?")
+        .bind(testimonial.client_name, testimonial.client_title, testimonial.client_company, testimonial.testimonial_text, testimonial.rating, testimonial.featured, testimonial.status, testimonial.client_photo_url, testimonial.property_id, id)
+        .run();
     return new Response("OK");
 });
 
@@ -225,7 +268,9 @@ router.post("/delete-testimonial", async (request, env) => {
 
 router.post("/update-testimonial-status", async (request, env) => {
     const { testimonialId, newStatus } = await request.json();
-    await env.DB.prepare("UPDATE testimonials SET status = ? WHERE id = ?").bind(newStatus, testimonialId).run();
+    await env.DB.prepare("UPDATE testimonials SET status = ? WHERE id = ?")
+        .bind(newStatus, testimonialId)
+        .run();
     return new Response("OK");
 });
 

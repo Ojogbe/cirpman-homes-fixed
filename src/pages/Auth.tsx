@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,11 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '../hooks/useAuth';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -17,14 +17,23 @@ const Auth = () => {
     phone: ''
   });
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { user, profile, signIn, signUp, loading, error } = useAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      navigate('/');
+    if (user && profile) {
+        if (profile.role === 'admin') {
+            navigate('/admin');
+        } else {
+            navigate('/dashboard/client');
+        }
     }
-  }, [navigate]);
+  }, [user, profile, navigate]);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,31 +43,12 @@ const Auth = () => {
     });
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
+    if (isSignUp) {
       await signUp(formData.email, formData.password, formData.fullName, formData.phone);
-      toast.success('Account created successfully!');
-      navigate('/');
-    } catch (error: any) {
-      toast.error(error.message || 'Sign up failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
+    } else {
       await signIn(formData.email, formData.password);
-      toast.success('Signed in successfully!');
-      navigate('/');
-    } catch (error: any) {
-      toast.error(error.message || 'Sign in failed');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -98,7 +88,7 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={isSignUp ? handleSignUp : handleSignIn} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {isSignUp && (
                 <>
                   <div>
@@ -135,6 +125,7 @@ const Auth = () => {
                   id="email"
                   name="email"
                   type="email"
+                  autoComplete='email'
                   required
                   value={formData.email}
                   onChange={handleInputChange}
@@ -149,6 +140,7 @@ const Auth = () => {
                   id="password"
                   name="password"
                   type="password"
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   required
                   value={formData.password}
                   onChange={handleInputChange}

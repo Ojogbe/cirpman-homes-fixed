@@ -1,30 +1,18 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Phone, ChevronDown, User, LogOut } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
-  const [userRole, setUserRole] = useState<string>('client');
+  const { user, profile, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Check for existing JWT token from REST API auth
-    const token = localStorage.getItem('auth_token');
-    const userEmail = localStorage.getItem('user_email');
-    const role = localStorage.getItem('user_role');
-    
-    if (token && userEmail) {
-      setUser({ email: userEmail, role: role || 'client' });
-      setUserRole(role || 'client');
-    }
-  }, []);
 
   const navItems = [
     { name: 'Home', path: '/' },
@@ -47,22 +35,13 @@ const Navigation = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const handleSignOut = () => {
-    // Clear JWT auth tokens
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_email');
-    localStorage.removeItem('user_role');
-    
-    // Reset component state
-    setUser(null);
-    setUserRole('client');
+    signOut();
     setIsDashboardOpen(false);
-    
-    // Navigate home
     navigate('/');
   };
 
   const getDashboardPath = () => {
-    return userRole === 'admin' ? '/dashboard/admin' : '/dashboard/client';
+    return profile?.role === 'admin' ? '/admin' : '/dashboard/client';
   };
 
   return (
