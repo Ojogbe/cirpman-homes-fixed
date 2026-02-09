@@ -7,10 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-// Using text-based icons
-import { getRecaptchaToken } from '@/lib/recaptcha';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { worker } from '@/lib/worker';
 
 interface Property {
   id: string;
@@ -37,8 +36,7 @@ const Feedback = () => {
 
   const fetchProperties = async () => {
     try {
-      const res = await fetch('/api/properties');
-      if (!res.ok) throw new Error('Failed to fetch properties');
+      const res = await worker.post('get-properties', {});
       const data = await res.json();
       setProperties(Array.isArray(data) ? data : data.properties || []);
     } catch (error: any) {
@@ -97,13 +95,7 @@ const Feedback = () => {
         status: 'unread'
       };
 
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feedbackData)
-      });
-
-      if (!res.ok) throw new Error('Failed to submit feedback');
+      await worker.post('create-feedback', feedbackData);
 
       toast.success('Feedback submitted successfully! We will review and respond soon.');
       setSubmitted(true);

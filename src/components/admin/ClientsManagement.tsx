@@ -7,7 +7,7 @@ import { Search, Users, UserCog } from 'lucide-react';
 import { toast } from "sonner";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface Client {
   id: string;
@@ -34,7 +34,11 @@ const ClientsManagement = () => {
 
   const fetchClients = async () => {
     try {
-      const clientsData = await invokeWorker('get-clients', {});
+      const response = await worker.post('/get-profiles', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch clients');
+      }
+      const clientsData = await response.json();
       setClients(clientsData || []);
     } catch (error: any) {
       toast.error('Failed to fetch clients: ' + error.message);
@@ -44,29 +48,37 @@ const ClientsManagement = () => {
   };
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'client') => {
-    try {
-      await invokeWorker('update-user-role', { userId, newRole });
-      
-      setClients(prev => prev.map(client => 
-        client.id === userId ? { ...client, role: newRole } : client
-      ));
-      
-      toast.success(`User role updated to ${newRole}`);
-    } catch (error: any) {
-      toast.error('Failed to update user role: ' + error.message);
-    }
+    // TODO: Backend endpoint for updateUserRole is not implemented yet.
+    toast.info('This feature is temporarily disabled.');
+    // try {
+    //   await worker.post('/update-user-role', { userId, newRole });
+    //   setClients(prev => prev.map(client => 
+    //     client.id === userId ? { ...client, role: newRole } : client
+    //   ));
+    //   toast.success(`User role updated to ${newRole}`);
+    // } catch (error: any) {
+    //   toast.error('Failed to update user role: ' + error.message);
+    // }
   };
 
   const fetchClientPlans = async (clientId: string) => {
     setPlansLoading(true);
-    try {
-      const data = await invokeWorker('get-client-plans', { clientId });
-      setClientPlans(data || []);
-    } catch (e) {
-      setClientPlans([]);
-    } finally {
-      setPlansLoading(false);
-    }
+    // TODO: Backend endpoint for getClientPlans is not implemented yet.
+    toast.info('This feature is temporarily disabled.');
+    setClientPlans([]);
+    setPlansLoading(false);
+    // try {
+    //   const response = await worker.post('/get-client-plans', { clientId });
+    //   if (!response.ok) {
+    //     throw new Error('Failed to fetch client plans');
+    //   }
+    //   const data = await response.json();
+    //   setClientPlans(data || []);
+    // } catch (e) {
+    //   setClientPlans([]);
+    // } finally {
+    //   setPlansLoading(false);
+    // }
   };
 
   const handleOpenClientPlans = (client: any) => {
@@ -75,22 +87,24 @@ const ClientsManagement = () => {
   };
 
   const handleUpdateStage = async (planId: string, newStatus: string) => {
-    try {
-        await invokeWorker('update-installment-stage', { planId, newStatus });
-        setClientPlans(plans => plans.map(plan => ({
-            ...plan,
-            installment_plans: plan.installment_plans.map((ip: any) => ip.id === planId ? { ...ip, status: newStatus } : ip)
-          })));
-        toast.success('Installment stage updated!');
-    } catch (error) {
-        toast.error('Failed to update stage');
-    }
+    // TODO: Backend endpoint for updateInstallmentStage is not implemented yet.
+    toast.info('This feature is temporarily disabled.');
+    // try {
+    //     await worker.post('/update-installment-stage', { planId, newStatus });
+    //     setClientPlans(plans => plans.map(plan => ({
+    //         ...plan,
+    //         installment_plans: plan.installment_plans.map((ip: any) => ip.id === planId ? { ...ip, status: newStatus } : ip)
+    //       })));
+    //     toast.success('Installment stage updated!');
+    // } catch (error) {
+    //     toast.error('Failed to update stage');
+    // }
   };
 
   const filteredClients = clients.filter(client =>
-    client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.phone.toLowerCase().includes(searchTerm.toLowerCase())
+    (client.full_name && client.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (client.phone && client.phone.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const paginatedClients = filteredClients.slice(
@@ -157,7 +171,7 @@ const ClientsManagement = () => {
                           ? 'bg-red-100 text-red-800' 
                           : 'bg-blue-100 text-blue-800'
                       }`}>
-                        {client.role}
+                        {client.role || 'client'}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">

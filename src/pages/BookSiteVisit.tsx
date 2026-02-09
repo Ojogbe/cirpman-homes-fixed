@@ -7,8 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Clock, MapPin } from 'lucide-react';
 import { toast } from "sonner";
+import { worker } from '../lib/worker';
+import { useAuth } from '../hooks/useAuth';
 
 const BookSiteVisit = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -23,12 +26,13 @@ const BookSiteVisit = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (!res.ok) throw new Error('Failed to submit booking');
+      const bookingData = { ...formData, userId: user ? user.uid : null };
+      const response = await worker.post('/create-site-visit-booking', bookingData);
+      
+      if (response.status !== 200) {
+        throw new Error('Failed to submit booking');
+      }
+
       toast.success('Site visit request submitted successfully! We will contact you soon.');
       setFormData({
         name: '',

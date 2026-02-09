@@ -6,13 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-// Supabase import removed
 import { toast } from "sonner";
 import { Upload, User, Building, CreditCard, Signature, Download, CreditCard as CreditCardIcon } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { generateConsultantSubscriptionPDF, downloadPDF } from '@/lib/pdfGenerator';
-import { getRecaptchaToken } from '@/lib/recaptcha';
+import { worker } from '@/lib/worker';
 
 const ConsultantSubscription = () => {
   const [loading, setLoading] = useState(false);
@@ -53,6 +52,7 @@ const ConsultantSubscription = () => {
     
     // Files
     passportPhoto: null as File | null,
+    passportPhotoUrl: null as string | null,
   });
 
   useEffect(() => {
@@ -61,12 +61,10 @@ const ConsultantSubscription = () => {
 
   const fetchPaymentLink = async () => {
     try {
-      const response = await fetch('/api/payment-links?section=Consultant%20Application');
-      if (!response.ok) throw new Error('Failed to fetch payment link');
-      const data = await response.json();
-      const paymentLink = data.paymentLinks?.[0]?.link_url || data.link_url;
-      if (paymentLink) {
-        setConsultantSubscriptionPaymentLink(paymentLink);
+      const res = await worker.post('get-payment-links', { section: 'Consultant Application' });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setConsultantSubscriptionPaymentLink(data[0].url);
       }
     } catch (error: any) {
       toast.error('Failed to fetch consultant application payment link: ' + error.message);
@@ -96,7 +94,37 @@ const ConsultantSubscription = () => {
           toast.error('Passport photo must be less than 5MB');
           return;
         }
-        setFormData(prev => ({ ...prev, passportPhoto: file }));
+        setLoading(true);
+        try {
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const base64Content = event.target?.result as string;
+            
+            if (!base64Content) {
+              toast.error('Failed to read file');
+              return;
+            }
+
+            try {
+              const res = await worker.post('upload', {
+                file: base64Content,
+                type: file.type
+              });
+              const { url } = await res.json();
+              
+              setFormData(prev => ({ ...prev, passportPhoto: file, passportPhotoUrl: url }));
+              toast.success('Passport photo uploaded successfully!');
+            } catch (error: any) {
+              toast.error('Failed to upload passport photo: ' + error.message);
+            } finally {
+              setLoading(false);
+            }
+          };
+          reader.readAsDataURL(file);
+        } catch (error: any) {
+          toast.error('Failed to upload passport photo: ' + error.message);
+          setLoading(false);
+        }
       }
     }
   };
@@ -105,43 +133,21 @@ const ConsultantSubscription = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      let passportPhotoUrl = '';
-      if (formData.passportPhoto) {
-        // Upload passport photo to Cloudflare R2
-        const photoForm = new FormData();
-        photoForm.append('file', formData.passportPhoto);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: photoForm
-        });
-        if (!uploadRes.ok) throw new Error('Failed to upload passport photo');
-        const uploadData = await uploadRes.json();
-        passportPhotoUrl = uploadData.url;
-      }
-
-      // Prepare subscription data
       const subscriptionData = {
         ...formData,
-        passport_photo_url: passportPhotoUrl,
+        passport_photo_url: formData.passportPhotoUrl,
         status: 'pending',
         created_at: new Date().toISOString()
       };
 
-      // Submit consultant subscription
-      const res = await fetch('/api/consultants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subscriptionData)
-      });
-      if (!res.ok) throw new Error('Failed to submit consultant subscription');
+      await worker.post('create-consultant-subscription', subscriptionData);
 
       toast.success('Consultant application submitted successfully! We will contact you soon.');
 
-      // Generate and download PDF
       try {
         const pdfBytes = await generateConsultantSubscriptionPDF({
           ...formData,
-          passport_photo_url: passportPhotoUrl,
+          passport_photo_url: formData.passportPhotoUrl,
         });
         downloadPDF(pdfBytes, `consultant-application-${formData.firstName}-${formData.lastName}.pdf`);
         toast.success('PDF downloaded successfully!');
@@ -150,7 +156,6 @@ const ConsultantSubscription = () => {
         toast.error('PDF generation failed, but application was saved.');
       }
 
-      // Reset form
       setFormData({
         firstName: '',
         middleName: '',
@@ -178,6 +183,7 @@ const ConsultantSubscription = () => {
         digitalSignature: '',
         date: new Date().toISOString().split('T')[0],
         passportPhoto: null,
+        passportPhotoUrl: null,
       });
     } catch (error: any) {
       toast.error('Failed to submit application: ' + error.message);
@@ -213,13 +219,8 @@ const ConsultantSubscription = () => {
       return;
     }
 
-    // For consultant applications, we don't calculate amount here as it's expected to be part of the fetched link
-    // const paymentAmount = 10000; // ₦10,000 application fee
-
-    // Use the fetched payment link
     const finalPaymentLink = consultantSubscriptionPaymentLink;
     
-    // Open payment link in new tab
     window.open(finalPaymentLink, '_blank');
     
     toast.success('Payment page opened in new tab. Please complete your application fee payment.');
@@ -627,13 +628,13 @@ const ConsultantSubscription = () => {
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download PDF
-                <Button 
-                  type="submit" 
-                  className="w-full bg-brand-gold hover:bg-brand-gold/90 text-brand-blue"
-                  disabled={loading}
-                >
-                  {loading ? <Skeleton className="h-5 w-32 mx-auto" /> : 'Submit Application'}
                 </Button>
+                <Button
+                  type="button"
+                  onClick={handlePayNow}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  disabled={!formData.firstName || !formData.lastName || !formData.email}
+                >
                   <CreditCardIcon className="h-4 w-4 mr-2" />
                   Pay Application Fee
                 </Button>

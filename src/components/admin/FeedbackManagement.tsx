@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Search, Star, MessageSquare, Reply, Eye, CheckCircle, Clock, User, Building } from 'lucide-react';
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface Feedback {
   id: string;
@@ -44,7 +44,11 @@ const FeedbackManagement = () => {
   const fetchFeedbacks = async () => {
     setLoading(true);
     try {
-      const data = await invokeWorker('get-feedbacks', {});
+      const response = await worker.post('/get-feedbacks', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch feedback');
+      }
+      const data = await response.json();
       setFeedbacks(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch feedback: ' + error.message);
@@ -65,7 +69,7 @@ const FeedbackManagement = () => {
 
   const handleStatusChange = async (feedbackId: string, newStatus: string) => {
     try {
-      await invokeWorker('update-feedback-status', { feedbackId, newStatus });
+      await worker.post('/update-feedback-status', { feedbackId, newStatus });
       toast.success('Feedback status updated successfully!');
       fetchFeedbacks();
     } catch (error: any) {
@@ -80,7 +84,7 @@ const FeedbackManagement = () => {
     }
 
     try {
-      await invokeWorker('reply-to-feedback', { feedbackId, replyMessage });
+      await worker.post('/reply-to-feedback', { feedbackId, replyMessage });
       toast.success('Reply sent successfully!');
       setReplyDialogOpen(false);
       setReplyMessage('');

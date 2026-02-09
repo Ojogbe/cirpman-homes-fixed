@@ -3,7 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -22,6 +23,7 @@ import Testimonials from "./pages/Testimonials";
 import FAQ from "./pages/FAQ";
 import Feedback from "./pages/Feedback";
 import NotFound from "./pages/NotFound";
+import UsersPage from "./pages/UsersPage"; // Import the new UsersPage component
 
 const queryClient = new QueryClient();
 
@@ -29,9 +31,9 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -41,19 +43,19 @@ const App = () => {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/book-site-visit" element={<BookSiteVisit />} />
-                       <Route path="/customer-subscription" element={<CustomerSubscription />} />
-             <Route path="/consultant-subscription" element={<ConsultantSubscription />} />
-             <Route path="/blog" element={<Blog />} />
-             <Route path="/blog/:slug" element={<BlogPost />} />
-             <Route path="/testimonials" element={<Testimonials />} />
-             <Route path="/faq" element={<FAQ />} />
-             <Route path="/feedback" element={<Feedback />} />
-             <Route path="/dashboard/admin" element={<AdminDashboard />} />
-             <Route path="/dashboard/client" element={<ClientDashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/customer-subscription" element={<CustomerSubscription />} />
+            <Route path="/consultant-subscription" element={<ConsultantSubscription />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/testimonials" element={<Testimonials />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/dashboard/admin" element={<AdminDashboard />} />
+            <Route path="/dashboard/client" element={<ClientDashboard />} />
+            <Route path="/users" element={<UsersPage />} /> {/* Add the new route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

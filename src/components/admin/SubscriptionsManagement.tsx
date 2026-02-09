@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { toast } from "sonner";
 import { Search, Download, Eye, Mail, Filter, Users, UserCheck } from 'lucide-react';
 import { generateCustomerSubscriptionPDF, generateConsultantSubscriptionPDF, downloadPDF } from '@/lib/pdfGenerator';
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface CustomerSubscription {
   id: string;
@@ -57,10 +57,17 @@ const SubscriptionsManagement = () => {
   const fetchSubscriptions = async () => {
     setLoading(true);
     try {
-      const [customerData, consultantData] = await Promise.all([
-        invokeWorker('get-customer-subscriptions', {}),
-        invokeWorker('get-consultant-subscriptions', {}),
+      const [customerResponse, consultantResponse] = await Promise.all([
+        worker.post('/get-customer-subscriptions', {}),
+        worker.post('/get-consultant-subscriptions', {}),
       ]);
+
+      if (!customerResponse.ok || !consultantResponse.ok) {
+        throw new Error('Failed to fetch subscriptions');
+      }
+
+      const customerData = await customerResponse.json();
+      const consultantData = await consultantResponse.json();
 
       setCustomerSubscriptions(Array.isArray(customerData) ? customerData : []);
       setConsultantSubscriptions(Array.isArray(consultantData) ? consultantData : []);

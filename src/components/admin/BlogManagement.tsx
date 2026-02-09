@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, Eye, Calendar, User, Tag, Upload, Save, X } from 'lucide-react';
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface BlogPost {
   id: string;
@@ -56,7 +56,11 @@ const BlogManagement = () => {
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const data = await invokeWorker('get-blog-posts', {});
+      const response = await worker.post('/get-blog-posts', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch blog posts');
+      }
+      const data = await response.json();
       setPosts(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch blog posts: ' + error.message);
@@ -127,8 +131,12 @@ const BlogManagement = () => {
         reader.onload = async () => {
             const base64 = reader.result as string;
             try {
-                const response = await invokeWorker("upload", { file: base64, type: file.type });
-                resolve(response.url);
+                const response = await worker.post("/upload", { file: base64, type: file.type });
+                if (!response.ok) {
+                  throw new Error('Failed to upload file');
+                }
+                const data = await response.json();
+                resolve(data.url);
             } catch (error) {
                 reject(error);
             }
@@ -151,7 +159,7 @@ const BlogManagement = () => {
         const publicUrl = await uploadFile(file);
         setFormData(prev => ({
           ...prev,
-          featured_image_url: publicUrl
+          featured_image_url: publicUrl as string
         }));
 
         toast.success('Image uploaded successfully!');
@@ -172,10 +180,10 @@ const BlogManagement = () => {
       };
 
       if (editingPost) {
-        await invokeWorker('update-blog-post', { ...postData, id: editingPost.id });
+        await worker.post('/update-blog-post', { ...postData, id: editingPost.id });
         toast.success('Blog post updated successfully!');
       } else {
-        await invokeWorker('create-blog-post', postData);
+        await worker.post('/create-blog-post', postData);
         toast.success('Blog post created successfully!');
       }
 
@@ -207,7 +215,7 @@ const BlogManagement = () => {
   const handleDelete = async (postId: string) => {
     if (window.confirm('Are you sure you want to delete this blog post?')) {
       try {
-        await invokeWorker('delete-blog-post', { id: postId });
+        await worker.post('/delete-blog-post', { id: postId });
         toast.success('Blog post deleted successfully!');
         fetchPosts();
       } catch (error: any) {

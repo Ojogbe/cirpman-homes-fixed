@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, Star, User, Building, Upload, Check, X } from 'lucide-react';
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface Testimonial {
   id: string;
@@ -64,7 +64,11 @@ const TestimonialsManagement = () => {
   const fetchTestimonials = async () => {
     setLoading(true);
     try {
-      const data = await invokeWorker('get-testimonials', {});
+      const response = await worker.post('/get-testimonials', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch testimonials');
+      }
+      const data = await response.json();
       setTestimonials(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error('Failed to fetch testimonials: ' + error.message);
@@ -75,7 +79,11 @@ const TestimonialsManagement = () => {
 
   const fetchProperties = async () => {
     try {
-      const data = await invokeWorker('get-properties', { status: 'Available' });
+      const response = await worker.post('/get-properties', { status: 'Available' });
+      if (!response.ok) {
+        throw new Error('Failed to fetch properties');
+      }
+      const data = await response.json();
       setProperties(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Failed to fetch properties:', error);
@@ -120,8 +128,12 @@ const TestimonialsManagement = () => {
         reader.onload = async () => {
             const base64 = reader.result as string;
             try {
-                const response = await invokeWorker("upload", { file: base64, type: file.type });
-                resolve(response.url);
+                const response = await worker.post("/upload", { file: base64, type: file.type });
+                if (!response.ok) {
+                    throw new Error('Failed to upload file');
+                }
+                const data = await response.json();
+                resolve(data.url);
             } catch (error) {
                 reject(error);
             }
@@ -144,7 +156,7 @@ const TestimonialsManagement = () => {
         const publicUrl = await uploadFile(file);
         setFormData(prev => ({
           ...prev,
-          client_photo_url: publicUrl
+          client_photo_url: publicUrl as string
         }));
         toast.success('Photo uploaded successfully!');
       } catch (error: any) {
@@ -164,10 +176,10 @@ const TestimonialsManagement = () => {
       };
 
       if (editingTestimonial) {
-        await invokeWorker('update-testimonial', { id: editingTestimonial.id, ...testimonialData });
+        await worker.post('/update-testimonial', { id: editingTestimonial.id, ...testimonialData });
         toast.success('Testimonial updated successfully!');
       } else {
-        await invokeWorker('create-testimonial', testimonialData);
+        await worker.post('/create-testimonial', testimonialData);
         toast.success('Testimonial created successfully!');
       }
 
@@ -201,7 +213,7 @@ const TestimonialsManagement = () => {
   const handleDelete = async (testimonialId: string) => {
     if (window.confirm('Are you sure you want to delete this testimonial?')) {
       try {
-        await invokeWorker('delete-testimonial', { testimonialId });
+        await worker.post('/delete-testimonial', { testimonialId });
         toast.success('Testimonial deleted successfully!');
         fetchTestimonials();
       } catch (error: any) {
@@ -212,7 +224,7 @@ const TestimonialsManagement = () => {
 
   const handleStatusChange = async (testimonialId: string, newStatus: string) => {
     try {
-      await invokeWorker('update-testimonial-status', { testimonialId, newStatus });
+      await worker.post('/update-testimonial-status', { testimonialId, newStatus });
       toast.success('Testimonial status updated successfully!');
       fetchTestimonials();
     } catch (error: any) {

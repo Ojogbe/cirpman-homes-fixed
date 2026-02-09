@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -22,7 +22,7 @@ const Auth = () => {
   useEffect(() => {
     if (user && profile) {
         if (profile.role === 'admin') {
-            navigate('/admin');
+            navigate('/dashboard/admin');
         } else {
             navigate('/dashboard/client');
         }

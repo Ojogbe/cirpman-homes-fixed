@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Home, Users, Building, Calendar, BarChart3, Images, Clock, FileText, MessageSquare, HelpCircle, Star, Mail, DollarSign, Menu } from 'lucide-react';
+import { Home, Users, Building, Calendar, BarChart3, Images, Clock, FileText, MessageSquare, HelpCircle, Star, Mail, DollarSign, Menu, UserCog } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -29,6 +29,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, setActiv
     { id: 'feedback', label: 'Feedback', icon: MessageSquare },
     { id: 'newsletter', label: 'Newsletter', icon: Mail },
     { id: 'payment-links', label: 'Payment Links', icon: DollarSign },
+    { id: 'users', label: 'User Management', icon: UserCog },
   ];
 
   return (

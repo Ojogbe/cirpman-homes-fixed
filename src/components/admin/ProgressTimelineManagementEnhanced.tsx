@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Trash2, Calendar, Upload, X } from 'lucide-react';
 import { toast } from "sonner";
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface ProgressTimelineItem {
   id: string;
@@ -42,7 +42,11 @@ const ProgressTimelineManagementEnhanced = () => {
 
   const fetchTimelineItems = async () => {
     try {
-      const data = await invokeWorker('get-progress-timeline-items', {});
+      const response = await worker.post('/get-progress-timeline-items', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch progress timeline');
+      }
+      const data = await response.json();
       setTimelineItems(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error('Failed to fetch progress timeline: ' + error.message);
@@ -58,8 +62,12 @@ const ProgressTimelineManagementEnhanced = () => {
         reader.onload = async () => {
             const base64 = reader.result as string;
             try {
-                const response = await invokeWorker("upload", { file: base64, type: file.type });
-                resolve({ url: response.url, isVideo: file.type.startsWith('video/') });
+                const response = await worker.post("/upload", { file: base64, type: file.type });
+                if (!response.ok) {
+                    throw new Error('Failed to upload file');
+                }
+                const data = await response.json();
+                resolve({ url: data.url, isVideo: file.type.startsWith('video/') });
             } catch (error) {
                 reject(error);
             }
@@ -87,17 +95,17 @@ const ProgressTimelineManagementEnhanced = () => {
       // Upload media files if any
       if (mediaFiles.length > 0) {
         const uploadPromises = mediaFiles.map(file => uploadFile(file));
-        const uploadResults = await Promise.all(uploadPromises);
+        const uploadResults = await Promise.all(uploadPromises as any);
         
         // Use the first image and first video
-        const firstImage = uploadResults.find(result => !result.isVideo);
-        const firstVideo = uploadResults.find(result => result.isVideo);
+        const firstImage = uploadResults.find((result: any) => !result.isVideo);
+        const firstVideo = uploadResults.find((result: any) => result.isVideo);
         
         imageUrl = firstImage?.url || null;
         videoUrl = firstVideo?.url || null;
       }
 
-      await invokeWorker('create-progress-timeline-item', {
+      await worker.post('/create-progress-timeline-item', {
         title: formData.title,
         description: formData.description || null,
         date: formData.date,
@@ -119,7 +127,7 @@ const ProgressTimelineManagementEnhanced = () => {
 
   const deleteTimelineItem = async (id: string) => {
     try {
-      await invokeWorker('delete-progress-timeline-item', { id });
+      await worker.post('/delete-progress-timeline-item', { id });
       // Optimistically update local state
       setTimelineItems(prev => prev.filter(item => item.id !== id));
       toast.success('Progress update deleted!');

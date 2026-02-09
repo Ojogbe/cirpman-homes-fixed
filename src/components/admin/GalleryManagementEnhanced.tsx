@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Upload, Plus, Trash2, Images, X } from 'lucide-react';
 import { toast } from "sonner";
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface GalleryItem {
   id: string;
@@ -38,7 +38,11 @@ const GalleryManagementEnhanced = () => {
   const fetchGalleryItems = async () => {
     setLoading(true);
     try {
-      const data = await invokeWorker('get-gallery-items', {});
+      const response = await worker.post('/get-gallery-items', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch gallery items');
+      }
+      const data = await response.json();
       setGalleryItems(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch gallery items: ' + error.message);
@@ -54,8 +58,12 @@ const GalleryManagementEnhanced = () => {
         reader.onload = async () => {
             const base64 = reader.result as string;
             try {
-                const response = await invokeWorker("upload", { file: base64, type: file.type });
-                resolve(response.url);
+                const response = await worker.post("/upload", { file: base64, type: file.type });
+                if (!response.ok) {
+                    throw new Error('Failed to upload file');
+                }
+                const data = await response.json();
+                resolve(data.url);
             } catch (error) {
                 reject(error);
             }
@@ -88,7 +96,7 @@ const GalleryManagementEnhanced = () => {
         video_url: file.type.startsWith('video') ? uploadResults[index] : null
       }));
 
-      await invokeWorker('create-gallery-items', { galleryItems: newGalleryItems });
+      await worker.post('/create-gallery-items', { galleryItems: newGalleryItems });
 
       toast.success('Gallery items uploaded successfully!');
       setShowUploadForm(false);
@@ -104,7 +112,7 @@ const GalleryManagementEnhanced = () => {
 
   const deleteGalleryItem = async (id: string) => {
     try {
-      await invokeWorker('delete-gallery-item', { id });
+      await worker.post('/delete-gallery-item', { id });
       fetchGalleryItems();
     } catch (error: any) {
       toast.error('Failed to delete item: ' + error.message);

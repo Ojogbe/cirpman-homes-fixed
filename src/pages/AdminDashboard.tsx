@@ -16,6 +16,7 @@ import FeedbackManagement from '@/components/admin/FeedbackManagement';
 import NewsletterManagement from '@/components/admin/NewsletterManagement';
 import PaymentLinkManagement from '@/components/admin/PaymentLinkManagement';
 import AdminLayout from '@/components/admin/AdminLayout';
+import UsersPage from '@/pages/UsersPage'; // Import the new UsersPage component
 
 const AdminDashboard = () => {
   const { user, loading } = useAuth(true, 'admin');
@@ -107,6 +108,8 @@ const AdminDashboard = () => {
         return <NewsletterManagement />;
       case 'payment-links':
         return <PaymentLinkManagement />;
+      case 'users': // Add the new case for the users tab
+        return <UsersPage />;
       default:
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

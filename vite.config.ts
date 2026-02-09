@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
     // Build configuration
     build: {
       outDir: 'dist',
-      sourcemap: mode === 'development',
+      sourcemap: true,
       minify: mode === 'production' ? 'esbuild' : false,
       rollupOptions: {
         output: {

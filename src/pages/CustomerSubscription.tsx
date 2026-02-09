@@ -10,6 +10,7 @@ import { Upload, Calendar, MapPin, CreditCard as CreditCardIcon, User, Signature
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { generateCustomerSubscriptionPDF, downloadPDF } from '@/lib/pdfGenerator';
+import { worker } from '@/lib/worker';
 
 const CustomerSubscription = () => {
   const [loading, setLoading] = useState(false);
@@ -67,8 +68,7 @@ const CustomerSubscription = () => {
 
   const fetchProperties = async () => {
     try {
-      const res = await fetch('/api/properties');
-      if (!res.ok) throw new Error('Failed to fetch properties');
+      const res = await worker.post('get-properties', {});
       const data = await res.json();
       setProperties(Array.isArray(data) ? data : data.properties || []);
     } catch (error: any) {
@@ -78,11 +78,10 @@ const CustomerSubscription = () => {
 
   const fetchPaymentLink = async () => {
     try {
-      const res = await fetch('/api/payment-links?section=customer-subscription');
-      if (!res.ok) throw new Error('Failed to fetch payment link');
+      const res = await worker.post('get-payment-links', { section: 'customer-subscription' });
       const data = await res.json();
-      if (data && data.link_url) {
-        setCustomerSubscriptionPaymentLink(data.link_url);
+      if (data && data.length > 0) {
+        setCustomerSubscriptionPaymentLink(data[0].url);
       }
     } catch (error: any) {
       console.error('Error fetching payment link:', error);
@@ -123,10 +122,9 @@ const CustomerSubscription = () => {
       if (type === 'passportPhoto') {
         setLoading(true);
         try {
-          // Convert file to base64
           const reader = new FileReader();
           reader.onload = async (event) => {
-            const base64Content = event.target?.result?.toString().split(',')[1];
+            const base64Content = event.target?.result as string;
             
             if (!base64Content) {
               toast.error('Failed to read file');
@@ -134,17 +132,10 @@ const CustomerSubscription = () => {
             }
 
             try {
-              const res = await fetch('/api/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  fileName: `passport-${Date.now()}-${file.name}`,
-                  fileContent: base64Content,
-                  contentType: file.type
-                })
+              const res = await worker.post('upload', {
+                file: base64Content,
+                type: file.type
               });
-              
-              if (!res.ok) throw new Error('Failed to upload file');
               const { url } = await res.json();
               
               setFormData(prev => ({ ...prev, passportPhoto: file, passportPhotoUrl: url }));
@@ -196,24 +187,6 @@ const CustomerSubscription = () => {
     setLoading(true);
 
     try {
-      // Upload passport photo is now handled by handleFileUpload
-      // We just need the URL for subscriptionData
-      // let passportPhotoUrl = '';
-      // if (formData.passportPhoto) {
-      //   const fileName = `passport-photos/${Date.now()}-${formData.passportPhoto.name}`;
-      //   const { error: uploadError } = await supabase.storage
-      //     .from('real-estate-uploads')
-      //     .upload(fileName, formData.passportPhoto);
-        
-      //   if (uploadError) throw uploadError;
-        
-      //   const { data: { publicUrl } } = supabase.storage
-      //     .from('real-estate-uploads')
-      //     .getPublicUrl(fileName);
-        
-      //   passportPhotoUrl = publicUrl;
-      // }
-
       const subscriptionData = {
         ...formData,
         passport_photo_url: formData.passportPhotoUrl,
@@ -222,17 +195,10 @@ const CustomerSubscription = () => {
         created_at: new Date().toISOString()
       };
 
-      const res = await fetch('/api/customer-subscriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subscriptionData)
-      });
-      
-      if (!res.ok) throw new Error('Failed to submit subscription');
+      await worker.post('create-customer-subscription', subscriptionData);
 
       toast.success('Subscription submitted successfully! We will contact you soon.');
       
-      // Generate and download PDF
       try {
         const pdfBytes = await generateCustomerSubscriptionPDF({
           ...formData,
@@ -246,7 +212,6 @@ const CustomerSubscription = () => {
         toast.error('PDF generation failed, but subscription was saved.');
       }
       
-      // Reset form
       setFormData({
         surname: '',
         middleName: '',
@@ -310,21 +275,13 @@ const CustomerSubscription = () => {
       return;
     }
 
-    // Use the fetched payment link if available, otherwise fallback to a default or error
     if (!customerSubscriptionPaymentLink) {
       toast.error('Payment link not available. Please try again later or contact support.');
       return;
     }
 
-    // For customer subscriptions, we don't calculate amount here as it's expected to be part of the fetched link
-    // const paymentAmount = installmentPreview.totalAmount > 0 
-    //   ? installmentPreview.totalAmount 
-    //   : 50000; // Default amount if no calculation available
-
-    // Paystack payment link (replace with actual Paystack link when available)
     const finalPaymentLink = customerSubscriptionPaymentLink;
     
-    // Open payment link in new tab
     window.open(finalPaymentLink, '_blank');
     
     toast.success('Payment page opened in new tab. Please complete your payment.');

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Search, Users, Phone, Mail } from 'lucide-react';
 import { toast } from "sonner";
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface SiteVisitBooking {
   id: string;
@@ -33,7 +33,11 @@ const SiteVisitsManagementEnhanced = () => {
 
   const fetchBookings = async () => {
     try {
-      const data = await invokeWorker('get-site-visit-bookings', {});
+      const response = await worker.post('/get-site-visit-bookings', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch bookings');
+      }
+      const data = await response.json();
       setBookings(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error('Failed to fetch bookings: ' + error.message);
@@ -44,7 +48,7 @@ const SiteVisitsManagementEnhanced = () => {
 
   const updateFollowUpStatus = async (bookingId: string, newStatus: string) => {
     try {
-      await invokeWorker('update-site-visit-status', { bookingId, newStatus });
+      await worker.post('/update-site-visit-status', { bookingId, newStatus });
       setBookings(prev => prev.map(booking =>
         booking.id === bookingId 
           ? { ...booking, follow_up_status: newStatus }

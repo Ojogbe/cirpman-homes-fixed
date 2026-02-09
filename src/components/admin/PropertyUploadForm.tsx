@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Upload, Plus, X } from 'lucide-react';
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface PropertyUploadFormProps {
   onSuccess?: () => void;
@@ -138,8 +138,12 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
         reader.onload = async () => {
             const base64 = reader.result as string;
             try {
-                const response = await invokeWorker("upload", { file: base64, type: file.type });
-                resolve(response.url);
+                const response = await worker.post("/upload", { file: base64, type: file.type });
+                if (!response.ok) {
+                    throw new Error('Failed to upload file');
+                }
+                const data = await response.json();
+                resolve(data.url);
             } catch (error) {
                 reject(error);
             }
@@ -220,9 +224,9 @@ const PropertyUploadForm: React.FC<PropertyUploadFormProps> = ({ onSuccess, onCa
       };
 
       if (property) {
-        await invokeWorker('update-property', { id: property.id, ...propertyData });
+        await worker.post('/update-property', { id: property.id, ...propertyData });
       } else {
-        await invokeWorker('create-property', propertyData);
+        await worker.post('/create-property', propertyData);
       }
 
       toast.success(property ? 'Property updated successfully!' : 'Property uploaded successfully!');

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, HelpCircle, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface FAQ {
   id: string;
@@ -43,7 +43,11 @@ const FAQManagement = () => {
   const fetchFAQs = async () => {
     setLoading(true);
     try {
-      const data = await invokeWorker('get-faqs', {});
+      const response = await worker.post('/get-faqs', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch FAQ');
+      }
+      const data = await response.json();
       setFaqs(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch FAQ: ' + error.message);
@@ -83,10 +87,10 @@ const FAQManagement = () => {
 
     try {
       if (editingFAQ) {
-        await invokeWorker('update-faq', { ...formData, id: editingFAQ.id });
+        await worker.post('/update-faq', { ...formData, id: editingFAQ.id });
         toast.success('FAQ updated successfully!');
       } else {
-        await invokeWorker('create-faq', formData);
+        await worker.post('/create-faq', formData);
         toast.success('FAQ created successfully!');
       }
 
@@ -115,7 +119,7 @@ const FAQManagement = () => {
   const handleDelete = async (faqId: string) => {
     if (window.confirm('Are you sure you want to delete this FAQ?')) {
       try {
-        await invokeWorker('delete-faq', { id: faqId });
+        await worker.post('/delete-faq', { id: faqId });
         toast.success('FAQ deleted successfully!');
         fetchFAQs();
       } catch (error: any) {
@@ -126,7 +130,7 @@ const FAQManagement = () => {
 
   const handleToggleActive = async (faqId: string, currentStatus: boolean) => {
     try {
-      await invokeWorker('toggle-faq-status', { id: faqId, is_active: !currentStatus });
+      await worker.post('/toggle-faq-status', { id: faqId, is_active: !currentStatus });
       toast.success(`FAQ ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
       fetchFAQs();
     } catch (error: any) {
@@ -136,7 +140,7 @@ const FAQManagement = () => {
 
   const handleMove = async (faqId: string, direction: 'up' | 'down') => {
     try {
-        await invokeWorker('move-faq', { id: faqId, direction });
+        await worker.post('/move-faq', { id: faqId, direction });
         toast.success(`FAQ moved ${direction} successfully!`);
         fetchFAQs();
     } catch (error: any) {

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit, Trash2, Building } from 'lucide-react';
 import { toast } from "sonner";
 import PropertyUploadForm from "./PropertyUploadForm";
-import { invokeWorker } from '@/lib/worker';
+import { worker } from '@/lib/worker';
 
 interface Property {
   id: string;
@@ -39,7 +39,11 @@ const PropertiesManagement = () => {
 
   const fetchProperties = async () => {
     try {
-      const data = await invokeWorker('get-properties', {});
+      const response = await worker.post('/get-properties', {});
+      if (!response.ok) {
+        throw new Error('Failed to fetch properties');
+      }
+      const data = await response.json();
       setProperties(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching properties:', error);
@@ -53,7 +57,7 @@ const PropertiesManagement = () => {
     if (!window.confirm('Are you sure you want to delete this property?')) return;
     
     try {
-      await invokeWorker('delete-property', { id });
+      await worker.post('/delete-property', { id });
       setProperties(properties.filter(property => property.id !== id));
       toast.success('Property deleted successfully');
     } catch (error) {
