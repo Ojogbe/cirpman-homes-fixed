@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -23,7 +23,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { api } from '@/lib/api';
+import { worker } from '@/lib/worker';
 import { useAuth } from '@/components/auth/AuthContext';
 
 const visitorSchema = z.object({
@@ -65,7 +65,7 @@ const VisitorLogPage = () => {
 
   const onSubmit = async (data: VisitorFormData) => {
     try {
-      await api.post('/api/visitors', {
+      const response = await worker.post('/api/visitors', {
         full_name: data.fullName,
         company: data.company,
         email: data.email,
@@ -77,6 +77,10 @@ const VisitorLogPage = () => {
         has_been_before: data.hasBeenBefore,
         notes: data.notes,
       });
+
+      if (!response.ok) {
+        throw new Error('Server responded with an error');
+      }
 
       toast({
         title: 'Visitor Signed In',
