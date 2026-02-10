@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building, Calendar, BarChart3 } from 'lucide-react'; // Only keep icons used in overview
+import { Users, Building, Calendar, BarChart3 } from 'lucide-react';
 import ClientsManagement from '@/components/admin/ClientsManagement';
 import PropertiesManagement from '@/components/admin/PropertiesManagement';
 import SiteVisitsManagement from '@/components/admin/SiteVisitsManagement';
@@ -16,7 +16,8 @@ import FeedbackManagement from '@/components/admin/FeedbackManagement';
 import NewsletterManagement from '@/components/admin/NewsletterManagement';
 import PaymentLinkManagement from '@/components/admin/PaymentLinkManagement';
 import AdminLayout from '@/components/admin/AdminLayout';
-import UsersPage from '@/pages/UsersPage'; // Import the new UsersPage component
+import UsersPage from '@/pages/UsersPage';
+import VisitorLogPage from '@/pages/VisitorLog'; // Import the new VisitorLogPage component
 
 const AdminDashboard = () => {
   const { user, loading } = useAuth(true, 'admin');
@@ -90,6 +91,8 @@ const AdminDashboard = () => {
         return <PropertiesManagement />;
       case 'site-visits':
         return <SiteVisitsManagement />;
+      case 'visitor-log': // Add the new case for the visitor log tab
+        return <VisitorLogPage />;
       case 'subscriptions':
         return <SubscriptionsManagement />;
       case 'gallery':
@@ -108,7 +111,7 @@ const AdminDashboard = () => {
         return <NewsletterManagement />;
       case 'payment-links':
         return <PaymentLinkManagement />;
-      case 'users': // Add the new case for the users tab
+      case 'users': 
         return <UsersPage />;
       default:
         return (
