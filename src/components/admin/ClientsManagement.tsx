@@ -48,17 +48,15 @@ const ClientsManagement = () => {
   };
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'client') => {
-    // TODO: Backend endpoint for updateUserRole is not implemented yet.
-    toast.info('This feature is temporarily disabled.');
-    // try {
-    //   await worker.post('/update-user-role', { userId, newRole });
-    //   setClients(prev => prev.map(client => 
-    //     client.id === userId ? { ...client, role: newRole } : client
-    //   ));
-    //   toast.success(`User role updated to ${newRole}`);
-    // } catch (error: any) {
-    //   toast.error('Failed to update user role: ' + error.message);
-    // }
+    try {
+      await worker.post('/update-user-role', { userId, newRole });
+      setClients(prev => prev.map(client => 
+        client.id === userId ? { ...client, role: newRole } : client
+      ));
+      toast.success(`User role updated to ${newRole}`);
+    } catch (error: any) {
+      toast.error('Failed to update user role: ' + error.message);
+    }
   };
 
   const fetchClientPlans = async (clientId: string) => {

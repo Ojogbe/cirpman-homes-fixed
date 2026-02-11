@@ -17,7 +17,8 @@ import NewsletterManagement from '@/components/admin/NewsletterManagement';
 import PaymentLinkManagement from '@/components/admin/PaymentLinkManagement';
 import AdminLayout from '@/components/admin/AdminLayout';
 import UsersPage from '@/pages/UsersPage';
-import VisitorLogPage from '@/pages/VisitorLog'; // Import the new VisitorLogPage component
+import VisitorLogPage from '@/pages/VisitorLog';
+import { worker } from '@/lib/worker';
 
 const AdminDashboard = () => {
   const { user, loading } = useAuth(true, 'admin');
@@ -41,15 +42,7 @@ const AdminDashboard = () => {
   const fetchOverview = async () => {
     setOverviewLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/admin/stats', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        }
-      });
-
+      const response = await worker.post('/admin/stats', {});
       if (response.ok) {
         const data = await response.json();
         setOverview({
@@ -60,12 +53,10 @@ const AdminDashboard = () => {
           subscriptions: data.subscriptions || 0,
         });
       } else {
-        // Fallback on error
         setOverview({ clients: 0, properties: 0, siteVisits: 0, revenue: 0, subscriptions: 0 });
       }
     } catch (e) {
       console.error('Error fetching overview:', e);
-      // fallback to 0s
       setOverview({ clients: 0, properties: 0, siteVisits: 0, revenue: 0, subscriptions: 0 });
     } finally {
       setOverviewLoading(false);
@@ -91,7 +82,7 @@ const AdminDashboard = () => {
         return <PropertiesManagement />;
       case 'site-visits':
         return <SiteVisitsManagement />;
-      case 'visitor-log': // Add the new case for the visitor log tab
+      case 'visitor-log':
         return <VisitorLogPage />;
       case 'subscriptions':
         return <SubscriptionsManagement />;
