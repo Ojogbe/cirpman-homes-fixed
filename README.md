@@ -1,73 +1,93 @@
-# Welcome to your Lovable project
+# Cirpman Homes
 
-## Project info
+A comprehensive real estate and property management platform designed to streamline property listings, client interactions, and administrative workflows.
 
-**URL**: https://lovable.dev/projects/e3914140-f241-4b6e-96e3-2383cfd9ecc3
+## 🚀 Overview
 
-## How can I edit this code?
+Cirpman Homes is a robust web application built for modern real estate management. It provides a seamless experience for potential buyers to browse properties, clients to manage their subscriptions, and administrators to oversee operations.
 
-There are several ways of editing your application.
+**Developed by:** [Jeremiah Ojonimi](https://jeremiahojonimi.vercel.app)
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e3914140-f241-4b6e-96e3-2383cfd9ecc3) and start prompting.
+## ✨ Key Features
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Property Listings:** Comprehensive view of available properties with detailed information and high-quality imagery.
+- **Client & Admin Dashboards:** Dedicated panels for users to manage their profiles, subscriptions, and activities.
+- **Booking System:** Integrated "Book a Site Visit" functionality for efficient lead conversion.
+- **Multi-role Support:** Tailored experiences for Customers, Consultants, and Administrators.
+- **Subscription Management:** Automated management for Consultant and Customer subscription plans.
+- **Visitor Logs & Feedback:** Tools for tracking engagement and gathering valuable user insights.
+- **Blog & News:** Integrated content management and display for industry updates.
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🛠️ Technology Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Frontend:** [React](https://reactjs.org/) (v18)
+- **Framework:** [Vite](https://vitejs.dev/)
+- **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
+- **State Management:** [TanStack Query](https://tanstack.com/query/latest) (React Query)
+- **Forms:** [React Hook Form](https://react-hook-form.com/) & [Zod](https://zod.dev/)
+- **Backend:** [Cloudflare Workers](https://workers.cloudflare.com/) 
+- **Database:** [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQL)
+- **File Storage:** [Cloudflare R2](https://developers.cloudflare.com/r2/)
+- **Authentication:** [Firebase Auth](https://firebase.google.com/products/auth)
+- **Icons:** [Lucide React](https://lucide.dev/)
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🛠️ Getting Started
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Prerequisites
 
-# Step 3: Install the necessary dependencies.
-npm i
+- [Node.js](https://nodejs.org/) (Recommended version: 18.x or higher)
+- npm or yarn
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### Installation
 
-**Edit a file directly in GitHub**
+1. **Clone the repository:**
+   ```sh
+   git clone <repository-url>
+   cd cirpman-homes
+   ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+2. **Install dependencies:**
+   ```sh
+   npm install
+   ```
 
-**Use GitHub Codespaces**
+3. **Set up Environment Variables:**
+   Create a `.env` file in the root directory and add your Supabase and Firebase credentials (refer to `.env.example` if available).
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+4. **Start the development server:**
+   ```sh
+   npm run dev
+   ```
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## 🏗️ Project Structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- `src/components`: Reusable UI components powered by shadcn/ui.
+- `src/pages`: Main application views (Dashboard, Properties, Auth, etc.).
+- `src/hooks`: Custom React hooks for shared logic.
+- `src/lib`: Utility functions and third-party library initializations.
+- `src/types`: TypeScript definitions for project-wide use.
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/e3914140-f241-4b6e-96e3-2383cfd9ecc3) and click on Share -> Publish.
+## 🌐 Deployment
 
-## Can I connect a custom domain to my Lovable project?
+The project is optimized for deployment on modern cloud platforms:
 
-Yes, you can!
+- **Vercel:** Optimized for Vite and React applications.
+- **Cloudflare Pages:** High-performance static and dynamic hosting.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 📄 License
+
+Copyright © 2024 Jeremiah Ojonimi. All rights reserved.
